@@ -238,7 +238,7 @@
         .formula { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #a5b4fc; background: rgba(0,0,0,0.4); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px 16px; margin: 10px 0; text-align: center; }
         .ref-link { color: #60a5fa; text-decoration: underline; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
         .h-label { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; display: block; }
-        .h-body { font-size: 0.82rem; color: #94a3b8; line-height: 1.65; }
+        .h-body { font-size: 0.82rem; color: #cbd5e1; line-height: 1.65; }
         .h-title { font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; }
         .h-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
         .ref-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
@@ -317,7 +317,7 @@
                             <option value="lenart">Lenart Diski (Vorteks)</option>
                             <option value="anchor">Anchor (Duvar Sıyırıcı)</option>
                         </select>
-                        <p id="impellerDesc" class="text-[10px] text-slate-500 mt-2 italic leading-relaxed">...</p>
+                        <p id="impellerDesc" class="text-[10px] text-slate-300 mt-2 italic leading-relaxed">...</p>
                     </div>
 
                     <div>
@@ -385,7 +385,7 @@
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">Boya Seviyesi (m)</label>
                                 <input type="number" id="liquidH" value="2.0" step="0.05" class="input-dark mt-1">
-                                <p class="text-[9px] text-slate-600 mt-1">Doluluk seviyesi</p>
+                                <p class="text-[9px] text-slate-300 mt-1">Doluluk seviyesi</p>
                             </div>
                         </div>
                         <!-- Motor Gücü -->
@@ -400,15 +400,15 @@
                         <div id="tankInfoBox" class="rounded-lg p-3 mt-1 border" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.06)">
                             <div class="grid grid-cols-3 gap-2 text-center">
                                 <div>
-                                    <div class="text-[9px] text-slate-600 mono uppercase">Tank Hacmi</div>
+                                    <div class="text-[9px] text-slate-300 mono uppercase">Tank Hacmi</div>
                                     <div id="tankVolDisplay" class="text-xs font-black mono text-slate-300">-- m³</div>
                                 </div>
                                 <div>
-                                    <div class="text-[9px] text-slate-600 mono uppercase">Boya Kütlesi</div>
+                                    <div class="text-[9px] text-slate-300 mono uppercase">Boya Kütlesi</div>
                                     <div id="paintMassDisplay" class="text-xs font-black mono text-slate-300">-- kg</div>
                                 </div>
                                 <div>
-                                    <div class="text-[9px] text-slate-600 mono uppercase">Doluluk</div>
+                                    <div class="text-[9px] text-slate-300 mono uppercase">Doluluk</div>
                                     <div id="fillRatioDisplay" class="text-xs font-black mono text-slate-300">--%</div>
                                 </div>
                             </div>
@@ -426,17 +426,17 @@
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">Tane Boyutu d_p (µm)</label>
                                 <input type="number" id="pigDp" value="5" step="1" min="0.1" class="input-dark mt-1">
-                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Dispersiyon sonrası pigmentin ortalama partikül çapı. Grindometre/Hegman okumana karşılık gelen µm değeri.</p>
+                                <p class="text-[9px] text-slate-300 mt-1 leading-relaxed">Dispersiyon sonrası pigmentin ortalama partikül çapı. Grindometre/Hegman okumana karşılık gelen µm değeri.</p>
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">Pigment Yoğunluğu (kg/m³)</label>
                                 <input type="number" id="pigRho" value="4200" step="100" class="input-dark mt-1">
-                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Ham pigment malzemesinin öz yoğunluğu — pastanın değil. TiO₂: 4200 · Fe₂O₃: 4800 · Ftalo mavisi: 1600 · CB: 1800 · CaCO₃: 2700</p>
+                                <p class="text-[9px] text-slate-300 mt-1 leading-relaxed">Ham pigment malzemesinin öz yoğunluğu — pastanın değil. TiO₂: 4200 · Fe₂O₃: 4800 · Ftalo mavisi: 1600 · CB: 1800 · CaCO₃: 2700</p>
                             </div>
                             <div class="col-span-2">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">Toplam Katı Pigment Yükü (wt%)</label>
                                 <input type="number" id="pigX" value="20" step="1" min="1" max="80" class="input-dark mt-1">
-                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Boyada dibe çökme riski taşıyan tüm katı pigment ve dolguların toplam ağırlıkça yüzdesi. Örnek: TiO₂ %15 + CaCO₃ %10 + Fe₂O₃ %5 → buraya <span class="text-slate-400 font-bold">30</span> yazılır. Organik pigmentler düşük yoğunluklu olduğundan kritik değildir; ağır pigment ve dolgu maddelerini toplayın.</p>
+                                <p class="text-[9px] text-slate-300 mt-1 leading-relaxed">Boyada dibe çökme riski taşıyan tüm katı pigment ve dolguların toplam ağırlıkça yüzdesi. Örnek: TiO₂ %15 + CaCO₃ %10 + Fe₂O₃ %5 → buraya <span class="text-slate-400 font-bold">30</span> yazılır. Organik pigmentler düşük yoğunluklu olduğundan kritik değildir; ağır pigment ve dolgu maddelerini toplayın.</p>
                             </div>
                             <div class="col-span-2">
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">S Geometri Sabiti</label>
@@ -446,7 +446,7 @@
                                     <option value="6.0">Rushton / Düz Palet ~6.0</option>
                                     <option value="5.5">Pitched Blade 45° ~5.5</option>
                                 </select>
-                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Pervane tipine göre Zwietering S sabiti. Küçük S → daha az RPM yeterli. Seçili pervaneye göre otomatik önerilir.</p>
+                                <p class="text-[9px] text-slate-300 mt-1 leading-relaxed">Pervane tipine göre Zwietering S sabiti. Küçük S → daha az RPM yeterli. Seçili pervaneye göre otomatik önerilir.</p>
                             </div>
                         </div>
                     </div>
@@ -465,7 +465,7 @@
                             <span class="text-[9px] font-black text-blue-300 uppercase tracking-wider">t₉₅ Karışma Kriteri</span>
                             <span class="tag lit-badge">DOĞRULANMIŞ</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Grenville & Nienow (2004): Türbülanslı rejimde %95 homojenlik hedefi endüstri standardıdır. Tekrarlanabilirlik ±%10 içindedir.</p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Grenville & Nienow (2004): Türbülanslı rejimde %95 homojenlik hedefi endüstri standardıdır. Tekrarlanabilirlik ±%10 içindedir.</p>
                         <div class="formula-box mt-2">
                             t₉₅ · (P/V)^(1/3) · D^(2/3) = K ≈ 5.2
                         </div>
@@ -475,7 +475,7 @@
                             <span class="text-[9px] font-black text-orange-300 uppercase tracking-wider">Verimlilik Skoru</span>
                             <span class="tag lit-badge">DOĞRULANMIŞ</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Pompalama sayısı (Nq) × Güç sayısı (Np) oranı, endüstride "pompalama verimliliği" olarak bilinir (Cooke et al., 2011).</p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Pompalama sayısı (Nq) × Güç sayısı (Np) oranı, endüstride "pompalama verimliliği" olarak bilinir (Cooke et al., 2011).</p>
                         <div class="formula-box mt-2" style="color:#fb923c">
                             η = Nq / Np · (Re/Re_cr)^w
                         </div>
@@ -485,7 +485,7 @@
                             <span class="text-[9px] font-black text-green-300 uppercase tracking-wider">Homojenlik Ölçümü</span>
                             <span class="tag lit-warn">SİMÜLASYON</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Deneysel: iletkenlik probları, pH tracer, ERT (Elektrik Direnç Tomografisi). Bu simülasyon: parçacık "mixedness" ortalaması ile CoV yaklaşımı.</p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Deneysel: iletkenlik probları, pH tracer, ERT (Elektrik Direnç Tomografisi). Bu simülasyon: parçacık "mixedness" ortalaması ile CoV yaklaşımı.</p>
                     </div>
                 </div>
             </div>
@@ -530,9 +530,9 @@
                         <div id="homoBar" class="h-full bg-gradient-to-r from-red-600 via-yellow-500 to-green-500 rounded-full transition-all duration-300" style="width:0%"></div>
                     </div>
                     <div class="flex justify-between mt-1.5">
-                        <span class="text-[9px] text-slate-600 mono">0% (Karışmamış)</span>
-                        <span class="text-[9px] text-slate-600 mono">t₉₅ hedef: 95%</span>
-                        <span class="text-[9px] text-slate-600 mono">100% (Homojen)</span>
+                        <span class="text-[9px] text-slate-300 mono">0% (Karışmamış)</span>
+                        <span class="text-[9px] text-slate-300 mono">t₉₅ hedef: 95%</span>
+                        <span class="text-[9px] text-slate-300 mono">100% (Homojen)</span>
                     </div>
                 </div>
             </div>
@@ -550,28 +550,28 @@
                             <i class="fas fa-bolt text-yellow-400 text-xs mt-0.5"></i>
                             <span class="text-[10px] font-black text-yellow-300 uppercase">İletkenlik Probu (En Yaygın)</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Tanka NaCl veya KCl tracer eklenir. Birden fazla noktaya yerleştirilen iletkenlik probları zamana göre konsantrasyon değişimini kaydeder. Tüm noktalar ±5% kararlılığa ulaştığında t₉₅ tamamdır. <span class="text-indigo-300">(Ruszkowski, 1994; Cooke, 1988)</span></p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Tanka NaCl veya KCl tracer eklenir. Birden fazla noktaya yerleştirilen iletkenlik probları zamana göre konsantrasyon değişimini kaydeder. Tüm noktalar ±5% kararlılığa ulaştığında t₉₅ tamamdır. <span class="text-indigo-300">(Ruszkowski, 1994; Cooke, 1988)</span></p>
                     </div>
                     <div class="method-card" style="background:rgba(249,115,22,0.06);border-color:rgba(249,115,22,0.15)">
                         <div class="flex items-start gap-2 mb-2">
                             <i class="fas fa-palette text-orange-400 text-xs mt-0.5"></i>
                             <span class="text-[10px] font-black text-orange-300 uppercase">Boya / Dye Yöntemi</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Boya üretiminde kritik: pH indikatör boya (Thymolphthalein) tanka eklenir, renk değişimi görsel veya fotometrik izlenir. <span class="text-orange-300">Melton & Lipp (2002)</span> bu yöntemi boya endüstrisi için doğrulamıştır. En pratik endüstriyel metod.</p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Boya üretiminde kritik: pH indikatör boya (Thymolphthalein) tanka eklenir, renk değişimi görsel veya fotometrik izlenir. <span class="text-orange-300">Melton & Lipp (2002)</span> bu yöntemi boya endüstrisi için doğrulamıştır. En pratik endüstriyel metod.</p>
                     </div>
                     <div class="method-card" style="background:rgba(168,85,247,0.06);border-color:rgba(168,85,247,0.15)">
                         <div class="flex items-start gap-2 mb-2">
                             <i class="fas fa-radiation text-purple-400 text-xs mt-0.5"></i>
                             <span class="text-[10px] font-black text-purple-300 uppercase">ERT (Elektrik Direnç Tomografisi)</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Non-invaziv; tank duvarına yerleştirilen elektrot halkasıyla 3D konsantrasyon haritası çıkarır. Karışma döngülerini ve ölü bölgeleri görselleştirir. <span class="text-purple-300">(Rodgers et al., 2011)</span></p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Non-invaziv; tank duvarına yerleştirilen elektrot halkasıyla 3D konsantrasyon haritası çıkarır. Karışma döngülerini ve ölü bölgeleri görselleştirir. <span class="text-purple-300">(Rodgers et al., 2011)</span></p>
                     </div>
                     <div class="method-card" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15)">
                         <div class="flex items-start gap-2 mb-2">
                             <i class="fas fa-chart-scatter text-green-400 text-xs mt-0.5"></i>
                             <span class="text-[10px] font-black text-green-300 uppercase">CoV (Değişim Katsayısı)</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">Birden çok örnekleme noktasından alınan konsantrasyon verilerinin standart sapmasının ortalamasına oranı: CoV = σ/μ. CoV ≤ 0.05 → %95 homojenlik kabul edilir. <span class="text-green-300">Bu simülasyonun temel yaklaşımı.</span></p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">Birden çok örnekleme noktasından alınan konsantrasyon verilerinin standart sapmasının ortalamasına oranı: CoV = σ/μ. CoV ≤ 0.05 → %95 homojenlik kabul edilir. <span class="text-green-300">Bu simülasyonun temel yaklaşımı.</span></p>
                     </div>
                 </div>
             </div>
@@ -600,11 +600,11 @@
                             <p id="overflowMsg" class="text-[10px] leading-relaxed"></p>
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div class="rounded-lg p-2" style="background:rgba(0,0,0,0.3)">
-                                    <div class="text-[9px] text-slate-600 mono uppercase">Vorteks Derinliği</div>
+                                    <div class="text-[9px] text-slate-300 mono uppercase">Vorteks Derinliği</div>
                                     <div id="vortexDepth" class="text-xs font-black mono text-slate-200">-- m</div>
                                 </div>
                                 <div class="rounded-lg p-2" style="background:rgba(0,0,0,0.3)">
-                                    <div class="text-[9px] text-slate-600 mono uppercase">Boşluk</div>
+                                    <div class="text-[9px] text-slate-300 mono uppercase">Boşluk</div>
                                     <div id="overflowMargin" class="text-xs font-black mono text-slate-200">-- m</div>
                                 </div>
                             </div>
@@ -621,7 +621,7 @@
                             <p id="reDisplay" class="text-xl font-black mono text-indigo-400">0</p>
                         </div>
                         <p id="reStatus" class="text-[10px] font-bold text-slate-400 italic mb-2">HAREKETSİZ</p>
-                        <p class="text-[9px] text-slate-600 leading-relaxed">Akışın türbülanslı mı yoksa lamineer mi olduğunu gösterir. <span class="text-indigo-400">Re &gt; 10.000 → türbülanslı</span> (iyi karışma). Re &lt; 100 → lamineer (zayıf karışma). Boya için Re &gt; 5.000 hedefleyin.</p>
+                        <p class="text-[9px] text-slate-300 leading-relaxed">Akışın türbülanslı mı yoksa lamineer mi olduğunu gösterir. <span class="text-indigo-400">Re &gt; 10.000 → türbülanslı</span> (iyi karışma). Re &lt; 100 → lamineer (zayıf karışma). Boya için Re &gt; 5.000 hedefleyin.</p>
                     </div>
 
                     <!-- Güç -->
@@ -631,7 +631,7 @@
                             <p id="powerVal" class="text-xl font-black mono text-orange-400">-- W</p>
                         </div>
                         <p id="motorWarnDisplay" class="text-[9px] text-yellow-400 mb-2 leading-relaxed hidden"></p>
-                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane bu RPM'de boyadan çektiği teorik güç. <span class="text-orange-400">Motor gücü girildiyse gerçek güçle karşılaştırılır.</span> Motor bu değerden küçükse o RPM'e ulaşamaz — gerçek hız daha düşük olur.</p>
+                        <p class="text-[9px] text-slate-300 leading-relaxed">Pervane bu RPM'de boyadan çektiği teorik güç. <span class="text-orange-400">Motor gücü girildiyse gerçek güçle karşılaştırılır.</span> Motor bu değerden küçükse o RPM'e ulaşamaz — gerçek hız daha düşük olur.</p>
                     </div>
 
                     <!-- Uç Hızı -->
@@ -640,7 +640,7 @@
                             <p class="metric-label text-yellow-400">Pervane Uç Hızı (v_tip)</p>
                             <p id="tipVal" class="text-xl font-black mono text-yellow-400">-- m/s</p>
                         </div>
-                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane kanadının en uç noktasının hızı. <span class="text-yellow-400">Boya karıştırma için 1–4 m/s idealdir.</span> &lt;1 m/s → karışma zayıf. &gt;5 m/s → köpük, pigment bozunması, hava girişi riski. Disperser için 10–20 m/s normaldir.</p>
+                        <p class="text-[9px] text-slate-300 leading-relaxed">Pervane kanadının en uç noktasının hızı. <span class="text-yellow-400">Boya karıştırma için 1–4 m/s idealdir.</span> &lt;1 m/s → karışma zayıf. &gt;5 m/s → köpük, pigment bozunması, hava girişi riski. Disperser için 10–20 m/s normaldir.</p>
                     </div>
 
                     <!-- Sirkülasyon -->
@@ -650,7 +650,7 @@
                             <p id="pumpVal" class="text-xl font-black mono text-green-400">-- s</p>
                         </div>
                         <p id="pumpSubVal" class="text-[9px] text-slate-500 mono mb-2"></p>
-                        <p class="text-[9px] text-slate-600 leading-relaxed">Tank içeriğinin <span class="text-green-400">bir kez pervane üzerinden geçmesi için geçen süre</span> (= Tank hacmi ÷ Pompalama debisi). Ne kadar kısa → o kadar aktif sirkülasyon. Homojenlik için genellikle <span class="text-green-400">3–5 tam tur</span> gerekir.</p>
+                        <p class="text-[9px] text-slate-300 leading-relaxed">Tank içeriğinin <span class="text-green-400">bir kez pervane üzerinden geçmesi için geçen süre</span> (= Tank hacmi ÷ Pompalama debisi). Ne kadar kısa → o kadar aktif sirkülasyon. Homojenlik için genellikle <span class="text-green-400">3–5 tam tur</span> gerekir.</p>
                     </div>
 
                     <!-- Njs -->
@@ -662,8 +662,8 @@
                                 <p id="njsStatus" class="text-[9px] font-black mt-0.5">--</p>
                             </div>
                         </div>
-                        <div id="njsDetail" class="text-[9px] text-slate-600 leading-relaxed mb-2"></div>
-                        <p class="text-[9px] text-slate-600 leading-relaxed"><span class="text-purple-400">Zwietering (1958) Njs korelasyonu:</span> Pigmentin tanka dibine çökmemesi için gereken minimum RPM. Bu değerin altında pigment dibe oturur, boya homojen olmaz. Pigment tipi ve yüklemesi girilmeden hesaplanamaz.</p>
+                        <div id="njsDetail" class="text-[9px] text-slate-300 leading-relaxed mb-2"></div>
+                        <p class="text-[9px] text-slate-300 leading-relaxed"><span class="text-purple-400">Zwietering (1958) Njs korelasyonu:</span> Pigmentin tanka dibine çökmemesi için gereken minimum RPM. Bu değerin altında pigment dibe oturur, boya homojen olmaz. Pigment tipi ve yüklemesi girilmeden hesaplanamaz.</p>
                     </div>
 
                     <!-- Np -->
@@ -672,7 +672,7 @@
                             <p class="metric-label">Güç Sayısı (Np)</p>
                             <p id="npVal" class="font-black text-sm mono text-slate-200">--</p>
                         </div>
-                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane tipine özgü boyutsuz sabit. Küçük Np → az güç tüketir (hydrofoil: 0.3). Büyük Np → çok güç tüketir (düz palet: 2.1). Formülde: P = Np × ρ × N³ × D⁵</p>
+                        <p class="text-[9px] text-slate-300 leading-relaxed">Pervane tipine özgü boyutsuz sabit. Küçük Np → az güç tüketir (hydrofoil: 0.3). Büyük Np → çok güç tüketir (düz palet: 2.1). Formülde: P = Np × ρ × N³ × D⁵</p>
                     </div>
 
                 </div>
@@ -682,7 +682,7 @@
                     <div class="flex justify-between items-center mb-1">
                         <div>
                             <h4 class="text-[9px] font-black uppercase text-slate-500">Verimlilik Skoru</h4>
-                            <p class="text-[9px] text-slate-600 mt-0.5">%40 Homo · %35 Re · %25 Nq/Np</p>
+                            <p class="text-[9px] text-slate-300 mt-0.5">%40 Homo · %35 Re · %25 Nq/Np</p>
                         </div>
                         <div class="relative w-14 h-14">
                             <svg width="56" height="56" class="score-ring absolute inset-0">
@@ -737,7 +737,7 @@
                   <option value="annular">Anüler Boşluklu Değirmen</option>
                   <option value="highEnergy">Yüksek Enerjili Pin Mill</option>
                 </select>
-                <p id="dMillDesc" class="text-[10px] text-slate-500 mt-2 italic leading-relaxed"></p>
+                <p id="dMillDesc" class="text-[10px] text-slate-300 mt-2 italic leading-relaxed"></p>
               </div>
 
               <div>
@@ -854,17 +854,17 @@
             <div class="space-y-2">
               <div class="method-card">
                 <span class="text-[9px] font-black text-blue-300 uppercase block mb-1">Kwade Stres Modeli</span>
-                <p class="text-[10px] text-slate-400 leading-relaxed">SI = ρ_m × d_b³ × v_t² — stres yoğunluğu; boncuk boyutu, yoğunluk ve uç hızı ile değişir.</p>
+                <p class="text-[10px] text-slate-300 leading-relaxed">SI = ρ_m × d_b³ × v_t² — stres yoğunluğu; boncuk boyutu, yoğunluk ve uç hızı ile değişir.</p>
                 <div class="formula-box mt-1" style="font-size:0.65rem">SI = ρ_b·d_b³·v_t²</div>
               </div>
               <div class="method-card" style="background:rgba(168,85,247,0.06);border-color:rgba(168,85,247,0.15)">
                 <span class="text-[9px] font-black text-purple-300 uppercase block mb-1">Spesifik Enerji → d₅₀</span>
-                <p class="text-[10px] text-slate-400 leading-relaxed">Schilde et al. (2010): d₅₀ ~ Em^(-α); α ≈ 0.35–0.55 organik pigmentler için.</p>
+                <p class="text-[10px] text-slate-300 leading-relaxed">Schilde et al. (2010): d₅₀ ~ Em^(-α); α ≈ 0.35–0.55 organik pigmentler için.</p>
                 <div class="formula-box mt-1" style="font-size:0.65rem;color:#c084fc">d₅₀ = d₀ · (Em_ref/Em)^α</div>
               </div>
               <div class="method-card" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15)">
                 <span class="text-[9px] font-black text-green-300 uppercase block mb-1">ASTM D1210</span>
-                <p class="text-[10px] text-slate-400 leading-relaxed">Hegman → µm dönüşümü: µm = (8 − H) × 12.5. Fineness of Grind standart ölçüm yöntemi.</p>
+                <p class="text-[10px] text-slate-300 leading-relaxed">Hegman → µm dönüşümü: µm = (8 − H) × 12.5. Fineness of Grind standart ölçüm yöntemi.</p>
               </div>
             </div>
           </div>
@@ -898,8 +898,8 @@
               </div>
               <canvas id="dChart" width="440" height="260" style="width:100%;background:transparent"></canvas>
               <div class="flex justify-between mt-2">
-                <span class="text-[9px] text-slate-600 mono">0 pas</span>
-                <span id="dChartMax" class="text-[9px] text-slate-600 mono">-- pas</span>
+                <span class="text-[9px] text-slate-300 mono">0 pas</span>
+                <span id="dChartMax" class="text-[9px] text-slate-300 mono">-- pas</span>
               </div>
             </div>
 
@@ -929,9 +929,9 @@
                 </div>
               </div>
               <div class="flex justify-between">
-                <span class="text-[9px] text-slate-600 mono">100 µm (kaba)</span>
+                <span class="text-[9px] text-slate-300 mono">100 µm (kaba)</span>
                 <span id="dHegmanCurrent" class="text-xs font-black text-purple-400 mono">H = -- (-- µm)</span>
-                <span class="text-[9px] text-slate-600 mono">≤1 µm (nano)</span>
+                <span class="text-[9px] text-slate-300 mono">≤1 µm (nano)</span>
               </div>
             </div>
 
@@ -945,9 +945,9 @@
                 <div id="dProgressBar" class="h-full rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7,#e879f9)"></div>
               </div>
               <div class="flex justify-between mt-1.5">
-                <span class="text-[9px] text-slate-600 mono" id="dD50Start2">d₅₀ = -- µm</span>
-                <span class="text-[9px] text-slate-600 mono">Hedef Hegman</span>
-                <span class="text-[9px] text-slate-600 mono" id="dD50Target2">d₅₀ = -- µm</span>
+                <span class="text-[9px] text-slate-300 mono" id="dD50Start2">d₅₀ = -- µm</span>
+                <span class="text-[9px] text-slate-300 mono">Hedef Hegman</span>
+                <span class="text-[9px] text-slate-300 mono" id="dD50Target2">d₅₀ = -- µm</span>
               </div>
             </div>
           </div>
@@ -962,7 +962,7 @@
               <span class="tag lit-badge">Kwade 1999</span>
             </div>
             <canvas id="dStressChart" width="440" height="180" style="width:100%;background:transparent"></canvas>
-            <p class="text-[9px] text-slate-600 mt-2 mono">SI = ρ_b × d_b³ × v_t² — Optimal SI aralığı organik pigmentler için 10⁻³–10⁻¹ Nm</p>
+            <p class="text-[9px] text-slate-300 mt-2 mono">SI = ρ_b × d_b³ × v_t² — Optimal SI aralığı organik pigmentler için 10⁻³–10⁻¹ Nm</p>
           </div>
         </div>
 
@@ -1019,7 +1019,7 @@
             <!-- Öneriler -->
             <div id="dRecommBox" class="rounded-xl p-4 border mb-4 hidden" style="background:rgba(124,58,237,0.07);border-color:rgba(167,139,250,0.2)">
               <p class="text-[9px] font-black text-purple-400 uppercase mb-2">Mühendis Önerisi</p>
-              <p id="dRecommText" class="text-[10px] text-slate-400 leading-relaxed"></p>
+              <p id="dRecommText" class="text-[10px] text-slate-300 leading-relaxed"></p>
             </div>
 
             <button id="dSaveCompare" class="w-full py-3 text-white font-black rounded-xl transition shadow-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2" style="background:#7c3aed">
@@ -1680,27 +1680,27 @@
                     <!-- Parametreler -->
                     <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">RPM</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">RPM</div>
                             <div class="font-black mono text-slate-200">${a.rpm}</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Np / Nq</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">Np / Nq</div>
                             <div class="font-black mono text-slate-200">${a.np.toFixed(2)} / ${a.nq.toFixed(2)}</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Yoğunluk</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">Yoğunluk</div>
                             <div class="font-black mono text-slate-200">${a.density} kg/m³</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Viskozite</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">Viskozite</div>
                             <div class="font-black mono text-slate-200">${a.viscosity} Pa·s</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">D pervane</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">D pervane</div>
                             <div class="font-black mono text-slate-200">${a.D} m</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
-                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">D tank</div>
+                            <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">D tank</div>
                             <div class="font-black mono text-slate-200">${a.vD} m · D/T=${(a.D/a.vD).toFixed(2)}</div>
                         </div>
                     </div>
@@ -1763,13 +1763,13 @@
                                 <div class="font-black mono text-green-400 text-base">${a.homoPerc.toFixed(1)}%</div>
                             </div>
                         </div>` : `
-                        <div class="text-[10px] text-slate-600 italic">Simülasyon t₉₅: ölçülmedi (simülasyon %95'e ulaşmadı)</div>`}
+                        <div class="text-[10px] text-slate-300 italic">Simülasyon t₉₅: ölçülmedi (simülasyon %95'e ulaşmadı)</div>`}
                     </div>
 
                     <!-- Mühendis önerisi -->
                     <div class="mt-3 p-3 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">
                         <div class="text-[9px] text-slate-500 uppercase mono font-bold mb-1">Mühendis Notu</div>
-                        <p class="text-[10px] text-slate-400 leading-relaxed">${getEngineeringNote(a)}</p>
+                        <p class="text-[10px] text-slate-300 leading-relaxed">${getEngineeringNote(a)}</p>
                     </div>
                 </div>`;
             });
@@ -2294,15 +2294,15 @@
             document.getElementById('dBeadInfo').innerHTML = `
                 <div class="grid grid-cols-2 gap-2">
                     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px">
-                        <div class="text-[9px] text-slate-600 mono uppercase mb-1">Yoğunluk</div>
+                        <div class="text-[9px] text-slate-300 mono uppercase mb-1">Yoğunluk</div>
                         <div class="font-black mono text-slate-200">${bead.density.toLocaleString()} kg/m³</div>
                     </div>
                     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px">
-                        <div class="text-[9px] text-slate-600 mono uppercase mb-1">Mohs Sertlik</div>
+                        <div class="text-[9px] text-slate-300 mono uppercase mb-1">Mohs Sertlik</div>
                         <div class="font-black mono text-slate-200">${bead.mohs}</div>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 leading-relaxed mt-2">${bead.note}</p>
+                <p class="text-[10px] text-slate-300 leading-relaxed mt-2">${bead.note}</p>
             `;
         }
 
@@ -2660,10 +2660,10 @@
                     </div>
                   </div>
                   <div class="grid grid-cols-2 gap-2 text-xs mb-4">
-                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Boncuk</div><div class="font-black mono text-slate-200">${a.beadMat.replace(/\(.*\)/,'').trim()}</div></div>
-                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">d_b</div><div class="font-black mono text-slate-200">${a.beadSize} mm</div></div>
-                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Uç Hızı</div><div class="font-black mono text-slate-200">${a.tipSpeed} m/s</div></div>
-                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Dolum</div><div class="font-black mono text-slate-200">%${a.beadFill}</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-300 mono mb-0.5">Boncuk</div><div class="font-black mono text-slate-200">${a.beadMat.replace(/\(.*\)/,'').trim()}</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-300 mono mb-0.5">d_b</div><div class="font-black mono text-slate-200">${a.beadSize} mm</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-300 mono mb-0.5">Uç Hızı</div><div class="font-black mono text-slate-200">${a.tipSpeed} m/s</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-300 mono mb-0.5">Dolum</div><div class="font-black mono text-slate-200">%${a.beadFill}</div></div>
                   </div>
                   <div class="space-y-2 mb-4">
                     <div><div class="flex justify-between mb-1"><span class="text-[9px] mono text-slate-500 uppercase">Pas Sayısı</span><span class="text-[10px] font-black mono" style="color:${col}">${a.passes}</span></div>
