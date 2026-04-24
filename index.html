@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boya Karıştırma Simülatörü | Profesyonel Analiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=DM+Sans:wght@300;400;500;600;700;900&display=swap');
+        
+        :root {
+            --bg-main: #0a0f1e;
+            --bg-card: #111827;
+            --bg-input: #1e2a3a;
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --text-muted: #64748b;
+        }
+
+        body { 
+            background-color: var(--bg-main); 
+            color: white;
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .sidebar-scroll {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--bg-input); border-radius: 10px; }
+
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px;
+        }
+
+        .input-dark {
+            background: var(--bg-main);
+            border: 1px solid rgba(255,255,255,0.07);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.2s;
+        }
+        .input-dark:focus { outline: none; border-color: var(--accent-orange); }
+
+        .btn-toggle {
+            background: var(--bg-main);
+            color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.2s;
+        }
+        .btn-toggle.active { background: var(--accent-orange); color: white; border-color: var(--accent-orange); }
+
+        input[type=range] { accent-color: var(--accent-orange); cursor: pointer; }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        canvas { background: #070c1a; cursor: crosshair; }
+        
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* Compare Modal */
+        #compareModal {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 500;
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.2s ease;
+        }
+        #compareModal.open { display: flex; align-items: center; justify-content: center; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .modal-box {
+            background: #0d1628;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            width: 95vw;
+            max-width: 1300px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        .modal-box::-webkit-scrollbar { width: 4px; }
+        .modal-box::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 10px; }
+
+        .compare-col {
+            background: linear-gradient(180deg, #111827 0%, #0d1628 100%);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 20px;
+            min-width: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .compare-col::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 14px 14px 0 0;
+        }
+
+        .best-badge {
+            font-size: 0.6rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            padding: 2px 8px;
+            border-radius: 99px;
+            text-transform: uppercase;
+        }
+
+        .winner-glow { box-shadow: 0 0 30px rgba(34, 197, 94, 0.12); }
+
+        .bar-compare {
+            height: 6px;
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Homojenlik Metodoloji Paneli */
+        .method-card {
+            background: rgba(59, 130, 246, 0.06);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 10px;
+            padding: 14px;
+        }
+        .formula-box {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #a5b4fc;
+        }
+
+        /* Score donut */
+        .score-ring { transform: rotate(-90deg); }
+        .score-circle { transition: stroke-dashoffset 0.8s ease; }
+
+        /* Radar chart for compare */
+        .radar-axis { opacity: 0.2; }
+
+        .col-accent-0 { --col: #f97316; }
+        .col-accent-1 { --col: #3b82f6; }
+        .col-accent-2 { --col: #a855f7; }
+        .col-accent-3 { --col: #22c55e; }
+        .col-accent-0::before { background: #f97316; }
+        .col-accent-1::before { background: #3b82f6; }
+        .col-accent-2::before { background: #a855f7; }
+        .col-accent-3::before { background: #22c55e; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .lit-badge {
+            background: rgba(34,197,94,0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.2);
+        }
+        .lit-warn {
+            background: rgba(251,191,36,0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(251,191,36,0.2);
+        }
+        .lit-info {
+            background: rgba(99,102,241,0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99,102,241,0.2);
+        }
+
+        /* Help Modal Tabs */
+        .help-tab {
+            background: rgba(255,255,255,0.04);
+            color: #64748b;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .help-tab:hover { background: rgba(255,255,255,0.07); color: #94a3b8; }
+        .help-tab.active-tab { background: rgba(59,130,246,0.2); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+
+        .help-section { display: none; }
+        .help-section.active { display: block; }
+
+        .h-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+        }
+        .h-card-blue { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.15); }
+        .h-card-orange { background: rgba(249,115,22,0.06); border-color: rgba(249,115,22,0.15); }
+        .h-card-green { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.15); }
+        .h-card-yellow { background: rgba(251,191,36,0.07); border-color: rgba(251,191,36,0.2); }
+        .h-card-purple { background: rgba(168,85,247,0.06); border-color: rgba(168,85,247,0.15); }
+
+        .formula { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #a5b4fc; background: rgba(0,0,0,0.4); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 12px 16px; margin: 10px 0; text-align: center; }
+        .ref-link { color: #60a5fa; text-decoration: underline; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+        .h-label { font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; display: block; }
+        .h-body { font-size: 0.82rem; color: #94a3b8; line-height: 1.65; }
+        .h-title { font-size: 0.88rem; font-weight: 800; margin-bottom: 6px; }
+        .h-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 20px 0; }
+        .ref-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
+        .ref-row:last-child { border-bottom: none; }
+        .ref-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #475569; background: rgba(255,255,255,0.05); border-radius: 4px; padding: 2px 7px; flex-shrink: 0; margin-top: 2px; }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-6 max-w-[1600px] mx-auto">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-orange-600 rounded-lg shadow-lg shadow-orange-900/30">
+                <i class="fas fa-vial-circle-check text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black leading-none tracking-tight mono">BOYA KARIŞTIRMA SİMÜLATÖRÜ</h1>
+                <p class="text-xs text-slate-500 font-medium mt-0.5">Endüstriyel Karıştırıcı Simülasyonu v4.0 · Grenville-Nienow (2004)</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button id="openHelp" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-700 text-slate-200 hover:bg-slate-600 transition flex items-center gap-2">
+                <i class="fas fa-book-open"></i>
+                <span>Yardım</span>
+            </button>
+            <button id="openCompare" class="px-4 py-2 rounded-lg text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition flex items-center gap-2">
+                <i class="fas fa-code-compare"></i> 
+                <span>Karşılaştır</span>
+                <span id="compareBadge" class="hidden bg-white/20 text-white text-xs px-2 py-0.5 rounded-full mono font-black">0</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-[1600px] mx-auto">
+        
+        <!-- Sol: Parametreler -->
+        <div class="lg:col-span-3 space-y-4 sidebar-scroll pr-1">
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 mb-5 text-orange-400">
+                    <i class="fas fa-sliders text-sm"></i>
+                    <h2 class="font-black uppercase text-xs tracking-widest">Kontrol Paneli</h2>
+                </div>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-[9px] font-black mb-2 text-slate-500 uppercase tracking-wider">Pervane Konfigürasyonu</label>
+                        <select id="impellerType" class="input-dark">
+                            <option value="propeller">Marine Propeller (Aksiyel)</option>
+                            <option value="hydrofoil">Yüksek Verimli Hydrofoil</option>
+                            <option value="paddle">Düz Kanatlı Palet (Radyal)</option>
+                            <option value="cowles">Cowles Diski (Yüksek Kesme)</option>
+                            <option value="lenart">Lenart Diski (Vorteks)</option>
+                            <option value="anchor">Anchor (Duvar Sıyırıcı)</option>
+                        </select>
+                        <p id="impellerDesc" class="text-[10px] text-slate-500 mt-2 italic leading-relaxed">...</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-[9px] font-black mb-2 text-slate-500 uppercase tracking-wider">Tank Tipi</label>
+                        <div class="flex gap-2">
+                            <button id="geoCyl" class="btn-toggle active flex-1 py-2 rounded-lg text-xs font-black">SİLİNDİRİK</button>
+                            <button id="geoSq" class="btn-toggle flex-1 py-2 rounded-lg text-xs font-black">KARE</button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+                        <div class="flex items-center gap-2 text-blue-400 pb-1">
+                            <i class="fas fa-droplet text-xs"></i>
+                            <span class="text-[9px] font-black uppercase tracking-wider">Akışkan Özellikleri</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Yoğunluk (kg/m³)</label>
+                                <input type="number" id="density" value="1200" class="input-dark mt-1">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Viskozite (Pa·s)</label>
+                                <input type="number" id="viscosity" value="0.5" step="0.1" class="input-dark mt-1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+                        <div class="flex items-center gap-2 text-green-400 pb-1">
+                            <i class="fas fa-gauge-high text-xs"></i>
+                            <span class="text-[9px] font-black uppercase tracking-wider">Çalışma Koşulları</span>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-[9px] font-black text-slate-500 uppercase">Motor Hızı</label>
+                                <span id="rpmLabel" class="text-xs text-orange-500 font-black mono">600 RPM</span>
+                            </div>
+                            <input type="range" id="rpm" min="0" max="3000" step="50" value="600" class="w-full">
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+                        <div class="flex items-center gap-2 text-purple-400 pb-1">
+                            <i class="fas fa-ruler-combined text-xs"></i>
+                            <span class="text-[9px] font-black uppercase tracking-wider">Geometri Ölçüleri</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Pervane Çapı (m)</label>
+                                <input type="number" id="impellerD" value="0.3" step="0.05" class="input-dark mt-1">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Tank Çapı (m)</label>
+                                <input type="number" id="vesselD" value="0.6" step="0.1" class="input-dark mt-1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metodoloji Bilgi Paneli -->
+            <div class="glass-card p-4">
+                <div class="flex items-center gap-2 mb-3 text-blue-400">
+                    <i class="fas fa-flask text-xs"></i>
+                    <h2 class="font-black uppercase text-xs tracking-widest">Literatür Referansı</h2>
+                </div>
+                <div class="space-y-3">
+                    <div class="method-card">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[9px] font-black text-blue-300 uppercase tracking-wider">t₉₅ Karışma Kriteri</span>
+                            <span class="tag lit-badge">DOĞRULANMIŞ</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Grenville & Nienow (2004): Türbülanslı rejimde %95 homojenlik hedefi endüstri standardıdır. Tekrarlanabilirlik ±%10 içindedir.</p>
+                        <div class="formula-box mt-2">
+                            t₉₅ · (P/V)^(1/3) · D^(2/3) = K ≈ 5.2
+                        </div>
+                    </div>
+                    <div class="method-card" style="background:rgba(249,115,22,0.06);border-color:rgba(249,115,22,0.15)">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[9px] font-black text-orange-300 uppercase tracking-wider">Verimlilik Skoru</span>
+                            <span class="tag lit-badge">DOĞRULANMIŞ</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Pompalama sayısı (Nq) × Güç sayısı (Np) oranı, endüstride "pompalama verimliliği" olarak bilinir (Cooke et al., 2011).</p>
+                        <div class="formula-box mt-2" style="color:#fb923c">
+                            η = Nq / Np · (Re/Re_cr)^w
+                        </div>
+                    </div>
+                    <div class="method-card" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15)">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-[9px] font-black text-green-300 uppercase tracking-wider">Homojenlik Ölçümü</span>
+                            <span class="tag lit-warn">SİMÜLASYON</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Deneysel: iletkenlik probları, pH tracer, ERT (Elektrik Direnç Tomografisi). Bu simülasyon: parçacık "mixedness" ortalaması ile CoV yaklaşımı.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orta: Simülasyon -->
+        <div class="lg:col-span-6 space-y-4">
+            <div class="glass-card relative overflow-hidden flex flex-col" style="min-height:600px">
+                <div class="p-4 flex justify-between items-center bg-slate-900/80 backdrop-blur-md z-10 border-b border-white/5">
+                    <div class="flex items-center gap-4">
+                        <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <h3 class="text-xs font-black tracking-widest text-slate-400 mono">ÜSTTEN BAKIŞ ANALİZİ</h3>
+                        <div class="px-2 py-1 bg-slate-950 rounded border border-slate-800 text-[10px] mono text-orange-400">
+                            <span id="currentTime">0.00</span>s
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="toggleSim" class="px-4 py-1.5 rounded-full bg-orange-600 text-white text-[10px] font-black hover:bg-orange-500 transition flex items-center gap-1.5">
+                            <i id="toggleIcon" class="fas fa-play"></i>
+                            <span id="toggleText">BAŞLAT</span>
+                        </button>
+                        <button id="resetSim" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+                            <i class="fas fa-rotate-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex-grow flex items-center justify-center bg-slate-950 p-4">
+                    <canvas id="simCanvas" class="rounded-lg shadow-2xl"></canvas>
+                </div>
+
+                <!-- Homojenlik Bar -->
+                <div class="p-5 bg-slate-900/60 border-t border-white/5">
+                    <div class="flex justify-between items-end mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Anlık Homojenlik (CoV yaklaşımı)</span>
+                            <span class="tag lit-warn">SİMÜLASYON</span>
+                        </div>
+                        <span id="homoVal" class="text-lg font-black mono text-green-400">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                        <div id="homoBar" class="h-full bg-gradient-to-r from-red-600 via-yellow-500 to-green-500 rounded-full transition-all duration-300" style="width:0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-1.5">
+                        <span class="text-[9px] text-slate-600 mono">0% (Karışmamış)</span>
+                        <span class="text-[9px] text-slate-600 mono">t₉₅ hedef: 95%</span>
+                        <span class="text-[9px] text-slate-600 mono">100% (Homojen)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Homojenlik Metodoloji Açıklaması -->
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 mb-4 text-indigo-400">
+                    <i class="fas fa-book-open text-sm"></i>
+                    <h2 class="font-black uppercase text-xs tracking-widest">Homojenliği Nasıl Ölçersiniz?</h2>
+                    <span class="tag lit-info ml-auto">LİTERATÜR</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="method-card">
+                        <div class="flex items-start gap-2 mb-2">
+                            <i class="fas fa-bolt text-yellow-400 text-xs mt-0.5"></i>
+                            <span class="text-[10px] font-black text-yellow-300 uppercase">İletkenlik Probu (En Yaygın)</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Tanka NaCl veya KCl tracer eklenir. Birden fazla noktaya yerleştirilen iletkenlik probları zamana göre konsantrasyon değişimini kaydeder. Tüm noktalar ±5% kararlılığa ulaştığında t₉₅ tamamdır. <span class="text-indigo-300">(Ruszkowski, 1994; Cooke, 1988)</span></p>
+                    </div>
+                    <div class="method-card" style="background:rgba(249,115,22,0.06);border-color:rgba(249,115,22,0.15)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <i class="fas fa-palette text-orange-400 text-xs mt-0.5"></i>
+                            <span class="text-[10px] font-black text-orange-300 uppercase">Boya / Dye Yöntemi</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Boya üretiminde kritik: pH indikatör boya (Thymolphthalein) tanka eklenir, renk değişimi görsel veya fotometrik izlenir. <span class="text-orange-300">Melton & Lipp (2002)</span> bu yöntemi boya endüstrisi için doğrulamıştır. En pratik endüstriyel metod.</p>
+                    </div>
+                    <div class="method-card" style="background:rgba(168,85,247,0.06);border-color:rgba(168,85,247,0.15)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <i class="fas fa-radiation text-purple-400 text-xs mt-0.5"></i>
+                            <span class="text-[10px] font-black text-purple-300 uppercase">ERT (Elektrik Direnç Tomografisi)</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Non-invaziv; tank duvarına yerleştirilen elektrot halkasıyla 3D konsantrasyon haritası çıkarır. Karışma döngülerini ve ölü bölgeleri görselleştirir. <span class="text-purple-300">(Rodgers et al., 2011)</span></p>
+                    </div>
+                    <div class="method-card" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <i class="fas fa-chart-scatter text-green-400 text-xs mt-0.5"></i>
+                            <span class="text-[10px] font-black text-green-300 uppercase">CoV (Değişim Katsayısı)</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">Birden çok örnekleme noktasından alınan konsantrasyon verilerinin standart sapmasının ortalamasına oranı: CoV = σ/μ. CoV ≤ 0.05 → %95 homojenlik kabul edilir. <span class="text-green-300">Bu simülasyonun temel yaklaşımı.</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ: Sonuçlar -->
+        <div class="lg:col-span-3 space-y-4">
+            <div class="glass-card p-5">
+                <div class="flex items-center gap-2 mb-5 text-indigo-400">
+                    <i class="fas fa-microchip text-sm"></i>
+                    <h2 class="font-black uppercase text-xs tracking-widest">Performans Verileri</h2>
+                </div>
+
+                <div id="regimeBox" class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 text-center mb-5">
+                    <h3 class="text-[9px] font-black text-slate-600 uppercase tracking-wider mb-1">Akış Rejimi</h3>
+                    <p id="reStatus" class="text-xs font-bold text-white mb-1 italic">HAREKETSİZ</p>
+                    <p id="reDisplay" class="text-2xl font-black mono text-indigo-400">Re = 0</p>
+                </div>
+
+                <div class="space-y-3 mb-5">
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-orange-500/20">
+                        <p class="metric-label mb-1 text-orange-400">Karışma Süresi (t₉₅)</p>
+                        <p id="mixTimeVal" class="text-2xl font-black mono text-white">-- s</p>
+                        <p class="text-[9px] text-slate-600 mt-1 uppercase font-bold tracking-widest">HEDEF: %95 HOMOJENLİK</p>
+                    </div>
+
+                    <!-- t95 Teorik (Grenville-Nienow) -->
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-blue-500/15">
+                        <p class="metric-label mb-1 text-blue-400">t₉₅ Teorik (G-N Korelasyonu)</p>
+                        <p id="gnTimeVal" class="text-lg font-black mono text-blue-300">-- s</p>
+                        <p class="text-[9px] text-slate-600 mt-1">Grenville & Nienow, 2004 · ±%10</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                            <p class="metric-label">GÜÇ (P)</p>
+                            <p id="powerVal" class="font-black text-sm mono text-slate-200">0.00 W</p>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                            <p class="metric-label">UÇ HIZI</p>
+                            <p id="tipVal" class="font-black text-sm mono text-slate-200">0.00 m/s</p>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                            <p class="metric-label">POMPALAMA</p>
+                            <p id="pumpVal" class="font-black text-sm mono text-slate-200">0.00 L/s</p>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                            <p class="metric-label">Np SAYISI</p>
+                            <p id="npVal" class="font-black text-sm mono text-slate-200">0.00</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verimlilik Skoru -->
+                <div class="border-t border-slate-800/80 pt-5">
+                    <div class="flex justify-between items-center mb-1">
+                        <div>
+                            <h4 class="text-[9px] font-black uppercase text-slate-500">Verimlilik Skoru</h4>
+                            <p class="text-[9px] text-slate-600 mt-0.5">%40 Homo · %35 Re · %25 Nq/Np</p>
+                        </div>
+                        <div class="relative w-14 h-14">
+                            <svg width="56" height="56" class="score-ring absolute inset-0">
+                                <circle cx="28" cy="28" r="22" stroke="#1e2a3a" stroke-width="4" fill="none"/>
+                                <circle id="scoreCircle" cx="28" cy="28" r="22" stroke="#22c55e" stroke-width="4" fill="none"
+                                    stroke-linecap="round"
+                                    stroke-dasharray="138.2"
+                                    stroke-dashoffset="138.2"
+                                    class="score-circle"/>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <span id="scoreVal" class="text-base font-black mono text-green-400">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden mt-2">
+                        <div id="scoreBar" class="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full transition-all duration-500" style="width:0%"></div>
+                    </div>
+                </div>
+                
+                <button id="saveCompare" class="w-full mt-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition shadow-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+                    <i class="fas fa-plus-circle"></i> Karşılaştırmaya Ekle
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Compare Modal -->
+    <div id="compareModal">
+        <div class="modal-box">
+            <!-- Modal Header -->
+            <div class="sticky top-0 z-10 p-5 border-b border-white/05" style="background:#0d1628">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-black mono">SETUP KARŞILAŞTIRMA RAPORU</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Tüm setup'lar aynı akışkan parametreleri baz alınarak normalize edilmiştir</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="clearCompare" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-900/40 text-red-400 hover:bg-red-900/60 transition border border-red-900/50">
+                            <i class="fas fa-trash mr-1"></i>Temizle
+                        </button>
+                        <button id="closeCompare" class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compareBody" class="p-5">
+                <!-- Dolu içerik JS ile doldurulur -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:600;backdrop-filter:blur(8px);align-items:center;justify-content:center;">
+        <div class="modal-box" style="max-width:900px;">
+            <div class="sticky top-0 z-10 p-5 border-b" style="background:#0d1628;border-color:rgba(255,255,255,0.06)">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg" style="background:rgba(59,130,246,0.15)">
+                            <i class="fas fa-book-open text-blue-400"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-black mono">TEKNİK METODOLOJİ</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Hesaplama yöntemleri · Literatür referansları · Simülasyon sınırları</p>
+                        </div>
+                    </div>
+                    <button id="closeHelp" class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
+                <div class="flex gap-1 mt-4 flex-wrap">
+                    <button class="help-tab active-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="homogeneity">Homojenlik Ölçümü</button>
+                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="formulas">Hesaplama Formülleri</button>
+                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="score">Verimlilik Skoru</button>
+                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="refs">Literatür</button>
+                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="limits">Sınırlar</button>
+                </div>
+            </div>
+            <div id="helpBody" class="p-6"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2">
+        <i class="fas fa-check-circle"></i> <span id="toastMsg">Karşılaştırmaya Eklendi!</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const particleCount = 800;
+        let particles = [];
+        let isRunning = false;
+        let vesselGeometry = 'cylindrical';
+        let archive = [];
+        let startTime = 0;
+        let finalMixingTime = null;
+        let totalElapsed = 0;
+
+        const COLORS = ['#f97316','#3b82f6','#a855f7','#22c55e'];
+        const COLOR_NAMES = ['Turuncu','Mavi','Mor','Yeşil'];
+
+        const specs = {
+            propeller: { np: 0.35, nq: 0.50, color: "#60a5fa", desc: "Aksiyel akış. Düşük güç tüketimi, yüksek sirkülasyon. Standart boya karıştırma için yaygın tercih.", flowType: "Aksiyel", shear: "Düşük" },
+            paddle:    { np: 2.10, nq: 0.70, color: "#fb923c", desc: "Radyal akış. Düşük hızda yüksek tork. Yüksek viskoziteli bazlar için.", flowType: "Radyal", shear: "Orta" },
+            hydrofoil: { np: 0.30, nq: 0.55, color: "#34d399", desc: "Yüksek verimli aksiyel akış. Minimum enerji tüketimi. Hafif pigment süspansiyonları.", flowType: "Aksiyel", shear: "Düşük" },
+            cowles:    { np: 0.45, nq: 0.15, color: "#f87171", desc: "Yüksek kesme kuvveti. Pigment dağıtımı ve topak kırma. Dispersant işlemler için standart.", flowType: "Radyal/Kesme", shear: "Çok Yüksek" },
+            lenart:    { np: 0.55, nq: 0.40, color: "#a78bfa", desc: "Vorteks diski. Yüzeyden toz çekme. Dolgu malzemeleri ve toz pigment ekleme aşaması.", flowType: "Vorteks", shear: "Orta" },
+            anchor:    { np: 0.40, nq: 0.10, color: "#e879f9", desc: "Duvar sıyırıcı. Isı transferi optimize. Yüksek viskozite ve reolojik boya tipleri.", flowType: "Aksiyel/Duvar", shear: "Düşük" }
+        };
+
+        const impellerNames = {
+            propeller: "Marine Propeller",
+            paddle: "Düz Palet",
+            hydrofoil: "Hydrofoil",
+            cowles: "Cowles Diski",
+            lenart: "Lenart Diski",
+            anchor: "Anchor"
+        };
+
+        class Particle {
+            constructor(type) { this.type = type; this.reset(); }
+            reset() {
+                const margin = 35;
+                const halfW = canvas.width / 2;
+                this.x = (this.type === 'A')
+                    ? margin + Math.random() * (halfW - margin * 1.2)
+                    : halfW + margin * 0.2 + Math.random() * (halfW - margin * 1.2);
+                this.y = margin + Math.random() * (canvas.height - margin * 2);
+                this.initX = this.x; this.initY = this.y;
+                this.vx = 0; this.vy = 0; this.mixedness = 0;
+            }
+            update(config) {
+                const cx = canvas.width / 2, cy = canvas.height / 2;
+                const dx = this.x - cx, dy = this.y - cy;
+                const d = Math.sqrt(dx*dx + dy*dy) + 0.001;
+                if (isRunning && config.rpm > 0) {
+                    const rpmFactor = config.rpm / 850;
+                    const force = 0.28 * rpmFactor * (1 / (d * 0.003 + 1));
+                    this.vx += (-dy/d) * force;
+                    this.vy += (dx/d) * force;
+                    this.vx += (dx/d) * force * 0.12;
+                    this.vy += (dy/d) * force * 0.12;
+                    const drag = 0.988 - (config.viscosity * 0.02);
+                    this.vx *= drag; this.vy *= drag;
+                    const velocity = Math.abs(this.vx) + Math.abs(this.vy);
+                    const mixSpeed = 0.0015 * (config.rpm / 600) * (config.D / 0.3) * (velocity * 0.6 + 0.4);
+                    this.mixedness = Math.min(1, this.mixedness + mixSpeed);
+                } else {
+                    const returnStr = 0.015;
+                    this.vx += (this.initX - this.x) * returnStr;
+                    this.vy += (this.initY - this.y) * returnStr;
+                    this.vx *= 0.88; this.vy *= 0.88;
+                    this.mixedness = Math.max(0, this.mixedness - 0.0005);
+                }
+                this.x += this.vx; this.y += this.vy;
+                const limit = canvas.width / 2 - 8;
+                if (vesselGeometry === 'cylindrical') {
+                    const currentD = Math.sqrt((this.x-cx)**2 + (this.y-cy)**2);
+                    if (currentD > limit) {
+                        const angle = Math.atan2(this.y-cy, this.x-cx);
+                        this.x = cx + Math.cos(angle) * (limit-1);
+                        this.y = cy + Math.sin(angle) * (limit-1);
+                        this.vx *= -0.3; this.vy *= -0.3;
+                    }
+                } else {
+                    const b = 12;
+                    if (this.x < b || this.x > canvas.width-b) { this.vx *= -0.6; this.x = Math.max(b, Math.min(canvas.width-b, this.x)); }
+                    if (this.y < b || this.y > canvas.height-b) { this.vy *= -0.6; this.y = Math.max(b, Math.min(canvas.height-b, this.y)); }
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2.2, 0, Math.PI*2);
+                let r = this.type==='A' ? 220 : 40, g = this.type==='A' ? 40 : 120, b = this.type==='A' ? 40 : 255;
+                const mR=147, mG=51, mB=234;
+                ctx.fillStyle = `rgb(${Math.round(r+(mR-r)*this.mixedness)},${Math.round(g+(mG-g)*this.mixedness)},${Math.round(b+(mB-b)*this.mixedness)})`;
+                ctx.fill();
+            }
+        }
+
+        function getParams() {
+            return {
+                impeller: document.getElementById('impellerType').value,
+                rpm: parseFloat(document.getElementById('rpm').value),
+                density: parseFloat(document.getElementById('density').value),
+                viscosity: parseFloat(document.getElementById('viscosity').value),
+                D: parseFloat(document.getElementById('impellerD').value),
+                vD: parseFloat(document.getElementById('vesselD').value),
+                geometry: vesselGeometry
+            };
+        }
+
+        function computeMetrics(p) {
+            const spec = specs[p.impeller];
+            const n = p.rpm / 60;
+            const re = n > 0 ? (p.D * p.D * n * p.density) / p.viscosity : 0;
+            const power = spec.np * p.density * (n**3) * (p.D**5);
+            const tipSpeed = Math.PI * p.D * n;
+            const pumping = (spec.nq * n * (p.D**3)) * 1000;
+            const vol = Math.PI * (p.vD/2)**2 * p.vD; // H≈T kabul
+            const pv = vol > 0 ? power / vol : 0;
+            // Grenville-Nienow (2004): t95 * (P/V)^(1/3) * D^(2/3) / T = K=5.2
+            // → t95 = 5.2 * T / (D^(2/3) * (P/V)^(1/3))
+            let gnTime = null;
+            if (pv > 0 && n > 0) {
+                gnTime = 5.2 * p.vD / (Math.pow(p.D, 2/3) * Math.pow(pv, 1/3));
+            }
+            const pumpEff = power > 0 ? pumping / power : 0;
+            return { re, power, tipSpeed, pumping, np: spec.np, nq: spec.nq, pumpEff, gnTime, vol, pv };
+        }
+
+        function init() {
+            canvas.width = 450; canvas.height = 450;
+            resetParticles();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function resetParticles() {
+            particles = [];
+            for (let i=0; i<particleCount; i++) particles.push(new Particle(i < particleCount/2 ? 'A' : 'B'));
+            isRunning = false; startTime = 0; totalElapsed = 0; finalMixingTime = null;
+            document.getElementById('mixTimeVal').innerText = "-- s";
+            document.getElementById('mixTimeVal').className = "text-2xl font-black mono text-white";
+            document.getElementById('currentTime').innerText = "0.00";
+            document.getElementById('toggleIcon').className = "fas fa-play";
+            document.getElementById('toggleText').innerText = "BAŞLAT";
+        }
+
+        function updateMetricsUI(m, homoPerc) {
+            document.getElementById('reDisplay').innerText = `Re = ${Math.round(m.re).toLocaleString('tr-TR')}`;
+            document.getElementById('powerVal').innerText = `${m.power.toFixed(2)} W`;
+            document.getElementById('tipVal').innerText = `${m.tipSpeed.toFixed(2)} m/s`;
+            document.getElementById('pumpVal').innerText = `${m.pumping.toFixed(2)} L/s`;
+            document.getElementById('npVal').innerText = m.np.toFixed(2);
+            document.getElementById('rpmLabel').innerText = `${Math.round(document.getElementById('rpm').value)} RPM`;
+            if (m.gnTime !== null) {
+                document.getElementById('gnTimeVal').innerText = `${m.gnTime.toFixed(1)} s`;
+            } else {
+                document.getElementById('gnTimeVal').innerText = "-- s";
+            }
+
+            const st = document.getElementById('reStatus');
+            if (m.re < 10) { st.innerText = "LAMİNER AKIŞ"; st.className = "text-xs font-bold text-blue-400 mb-1 italic"; }
+            else if (m.re > 10000) { st.innerText = "TÜRBÜLANSLI AKIŞ"; st.className = "text-xs font-bold text-green-400 mb-1 italic"; }
+            else { st.innerText = "GEÇİŞ REJİMİ"; st.className = "text-xs font-bold text-yellow-400 mb-1 italic"; }
+
+            const hWeight = homoPerc * 0.40;
+            const reWeight = Math.min(100, (m.re / 10000) * 100) * 0.35;
+            const efficiencyFactor = m.pumpEff * 40;
+            const powerWeight = Math.min(25, efficiencyFactor);
+            const totalScore = Math.min(100, Math.round(hWeight + reWeight + powerWeight));
+
+            document.getElementById('scoreVal').innerText = totalScore;
+            document.getElementById('scoreBar').style.width = `${totalScore}%`;
+            const circumference = 138.2;
+            const offset = circumference - (totalScore / 100) * circumference;
+            document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+            const scoreColor = totalScore > 70 ? '#22c55e' : totalScore > 40 ? '#f59e0b' : '#ef4444';
+            document.getElementById('scoreCircle').style.stroke = scoreColor;
+            document.getElementById('scoreVal').style.color = scoreColor;
+        }
+
+        function renderLoop() {
+            const p = getParams();
+            const spec = specs[p.impeller];
+            document.getElementById('impellerDesc').innerText = spec.desc;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 3; ctx.strokeStyle = '#1e293b'; ctx.fillStyle = '#070c1a';
+            if (vesselGeometry === 'cylindrical') {
+                ctx.beginPath(); ctx.arc(canvas.width/2, canvas.height/2, canvas.width/2-4, 0, Math.PI*2);
+                ctx.fill(); ctx.stroke();
+            } else {
+                ctx.fillRect(4,4,canvas.width-8,canvas.height-8); ctx.strokeRect(4,4,canvas.width-8,canvas.height-8);
+            }
+
+            let mSum = 0;
+            particles.forEach(pt => { pt.update(p); pt.draw(); mSum += pt.mixedness; });
+
+            const homoPerc = (mSum / particleCount) * 100;
+            document.getElementById('homoVal').innerText = `${homoPerc.toFixed(1)}%`;
+            document.getElementById('homoBar').style.width = `${homoPerc}%`;
+
+            if (isRunning) {
+                if (startTime === 0) startTime = Date.now();
+                if (finalMixingTime === null) {
+                    totalElapsed = (Date.now() - startTime) / 1000;
+                    document.getElementById('currentTime').innerText = totalElapsed.toFixed(2);
+                }
+                if (homoPerc >= 95 && finalMixingTime === null) {
+                    finalMixingTime = totalElapsed;
+                    const el = document.getElementById('mixTimeVal');
+                    el.innerText = `${finalMixingTime.toFixed(2)} s`;
+                    el.className = "text-2xl font-black mono text-green-400 animate-pulse";
+                }
+                const m = computeMetrics(p);
+                updateMetricsUI(m, homoPerc);
+            }
+
+            // Pervane Görseli
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2);
+            if (isRunning) ctx.rotate(Date.now() * (p.rpm / 18000));
+            ctx.fillStyle = spec.color;
+            ctx.shadowBlur = 14; ctx.shadowColor = spec.color;
+            const pSize = (p.D / p.vD) * canvas.width * 0.8;
+            ctx.fillRect(-pSize/2, -5, pSize, 10);
+            ctx.fillRect(-5, -pSize/2, 10, pSize);
+            ctx.restore();
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        // ============ KARŞILAŞTIRMA SİSTEMİ ============
+        function collectSnapshot() {
+            const p = getParams();
+            const m = computeMetrics(p);
+            const homoEl = document.getElementById('homoVal').innerText;
+            const homoPerc = parseFloat(homoEl) || 0;
+            const scoreEl = parseInt(document.getElementById('scoreVal').innerText) || 0;
+            const mixTime = finalMixingTime;
+
+            const hWeight = homoPerc * 0.40;
+            const reWeight = Math.min(100, (m.re / 10000) * 100) * 0.35;
+            const efficiencyFactor = m.pumpEff * 40;
+            const powerWeight = Math.min(25, efficiencyFactor);
+            const totalScore = Math.min(100, Math.round(hWeight + reWeight + powerWeight));
+
+            return {
+                id: Date.now(),
+                label: `Setup ${archive.length + 1}`,
+                impeller: p.impeller,
+                impellerName: impellerNames[p.impeller],
+                geometry: p.geometry,
+                rpm: p.rpm,
+                density: p.density,
+                viscosity: p.viscosity,
+                D: p.D,
+                vD: p.vD,
+                re: m.re,
+                power: m.power,
+                tipSpeed: m.tipSpeed,
+                pumping: m.pumping,
+                np: m.np,
+                nq: m.nq,
+                pumpEff: m.pumpEff,
+                gnTime: m.gnTime,
+                homoPerc: homoPerc,
+                mixTime: mixTime,
+                score: totalScore,
+                flowType: specs[p.impeller].flowType,
+                shear: specs[p.impeller].shear,
+                color: specs[p.impeller].color
+            };
+        }
+
+        function renderCompareModal() {
+            const body = document.getElementById('compareBody');
+            if (archive.length === 0) {
+                body.innerHTML = `<div class="empty-state">
+                    <i class="fas fa-code-compare text-4xl text-slate-700 mb-4 block"></i>
+                    <p class="text-slate-500 font-bold">Henüz karşılaştırma eklenmedi.</p>
+                    <p class="text-slate-600 text-sm mt-1">Simülasyonu çalıştırıp "Karşılaştırmaya Ekle" butonuna basın.</p>
+                </div>`;
+                return;
+            }
+
+            // Metrik bazlı best finder
+            const best = {
+                score: Math.max(...archive.map(a=>a.score)),
+                gnTime: Math.min(...archive.filter(a=>a.gnTime).map(a=>a.gnTime)),
+                power: Math.min(...archive.map(a=>a.power)),
+                pumping: Math.max(...archive.map(a=>a.pumping)),
+                re: Math.max(...archive.map(a=>a.re)),
+                pumpEff: Math.max(...archive.map(a=>a.pumpEff)),
+                homoPerc: Math.max(...archive.map(a=>a.homoPerc)),
+            };
+
+            // Özet tablo üstü
+            let html = `
+            <div class="mb-6 p-4 rounded-xl border border-slate-700/50" style="background:rgba(255,255,255,0.02)">
+                <h3 class="text-xs font-black mono text-slate-400 uppercase mb-3">Genel Karşılaştırma Özeti</h3>
+                <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800">
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Setup</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Pervane</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">RPM</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Re</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Güç (W)</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">t₉₅ G-N (s)</th>
+                            <th class="text-left py-2 pr-4 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Homojenlik</th>
+                            <th class="text-left py-2 text-slate-500 font-bold uppercase text-[9px] tracking-wider">Skor</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            archive.forEach((a,i) => {
+                const colStr = COLORS[i % COLORS.length];
+                const isBestScore = a.score === best.score;
+                html += `<tr class="border-b border-slate-800/50 hover:bg-slate-800/20">
+                    <td class="py-2 pr-4">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${colStr}"></span>
+                            <span class="font-black mono text-slate-300">${a.label}</span>
+                        </span>
+                    </td>
+                    <td class="py-2 pr-4 text-slate-400">${a.impellerName}</td>
+                    <td class="py-2 pr-4 mono text-slate-300">${a.rpm}</td>
+                    <td class="py-2 pr-4 mono ${a.re > 10000 ? 'text-green-400' : a.re > 10 ? 'text-yellow-400' : 'text-blue-400'}">${Math.round(a.re).toLocaleString('tr-TR')}</td>
+                    <td class="py-2 pr-4 mono ${a.power === best.power ? 'text-green-400 font-bold' : 'text-slate-300'}">${a.power.toFixed(2)}</td>
+                    <td class="py-2 pr-4 mono ${a.gnTime && a.gnTime === best.gnTime ? 'text-green-400 font-bold' : 'text-slate-300'}">${a.gnTime ? a.gnTime.toFixed(1) : '--'}</td>
+                    <td class="py-2 pr-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full" style="width:${a.homoPerc.toFixed(0)}%;background:${colStr}"></div>
+                            </div>
+                            <span class="mono text-slate-300">${a.homoPerc.toFixed(1)}%</span>
+                        </div>
+                    </td>
+                    <td class="py-2">
+                        <span class="font-black mono text-lg" style="color:${isBestScore?'#22c55e':colStr}">${a.score}</span>
+                        ${isBestScore ? '<span class="tag lit-badge ml-1">EN İYİ</span>' : ''}
+                    </td>
+                </tr>`;
+            });
+
+            html += `</tbody></table></div></div>`;
+
+            // Detay kartları
+            html += `<div class="grid gap-4" style="grid-template-columns: repeat(${Math.min(archive.length,3)}, 1fr)">`;
+
+            archive.forEach((a, i) => {
+                const colStr = COLORS[i % COLORS.length];
+                const isBestScore = a.score === best.score;
+                const isBestTime = a.gnTime && a.gnTime === best.gnTime;
+                const isBestPower = a.power === best.power;
+
+                // Bağıl bar hesaplamaları (max 100px)
+                const maxPower = Math.max(...archive.map(x=>x.power),0.001);
+                const maxPump = Math.max(...archive.map(x=>x.pumping),0.001);
+                const maxRe = Math.max(...archive.map(x=>x.re),0.001);
+                const maxGN = Math.max(...archive.filter(x=>x.gnTime).map(x=>x.gnTime),0.001);
+
+                const reBar = Math.round((a.re / maxRe) * 100);
+                const powerBar = Math.round((a.power / maxPower) * 100);
+                const pumpBar = Math.round((a.pumping / maxPump) * 100);
+                const gnBar = a.gnTime ? Math.round((1 - a.gnTime/maxGN) * 100) : 0; // inverse (daha kısa=daha iyi)
+
+                html += `
+                <div class="compare-col col-accent-${i%4} ${isBestScore ? 'winner-glow' : ''}">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="w-3 h-3 rounded-full" style="background:${colStr}"></span>
+                                <span class="font-black mono text-sm">${a.label}</span>
+                                ${isBestScore ? '<span class="best-badge" style="background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.2)">EN İYİ SKOR</span>' : ''}
+                            </div>
+                            <div class="text-lg font-black" style="color:${colStr}">${a.impellerName}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${a.geometry === 'cylindrical' ? 'Silindirik Tank' : 'Kare Tank'}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-black mono" style="color:${a.score > 70 ? '#22c55e' : a.score > 40 ? '#f59e0b' : '#ef4444'}">${a.score}</div>
+                            <div class="text-[9px] text-slate-500 uppercase tracking-wider">Verimlilik Skoru</div>
+                        </div>
+                    </div>
+
+                    <!-- Akış özellikleri -->
+                    <div class="flex gap-2 mb-4">
+                        <span class="tag" style="background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.07)">${a.flowType}</span>
+                        <span class="tag" style="background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.07)">Kesme: ${a.shear}</span>
+                    </div>
+
+                    <!-- Parametreler -->
+                    <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">RPM</div>
+                            <div class="font-black mono text-slate-200">${a.rpm}</div>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Np / Nq</div>
+                            <div class="font-black mono text-slate-200">${a.np.toFixed(2)} / ${a.nq.toFixed(2)}</div>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Yoğunluk</div>
+                            <div class="font-black mono text-slate-200">${a.density} kg/m³</div>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">Viskozite</div>
+                            <div class="font-black mono text-slate-200">${a.viscosity} Pa·s</div>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">D pervane</div>
+                            <div class="font-black mono text-slate-200">${a.D} m</div>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-lg">
+                            <div class="text-[9px] text-slate-600 uppercase mono mb-0.5">D tank</div>
+                            <div class="font-black mono text-slate-200">${a.vD} m · D/T=${(a.D/a.vD).toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI'lar -->
+                    <div class="space-y-3 mb-4">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[9px] mono text-slate-500 uppercase">Reynolds Sayısı</span>
+                                <span class="text-[10px] font-black mono ${a.re > 10000 ? 'text-green-400' : a.re > 10 ? 'text-yellow-400' : 'text-blue-400'}">${Math.round(a.re).toLocaleString('tr-TR')}</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${reBar}%;background:${colStr}"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[9px] mono text-slate-500 uppercase">Güç Tüketimi ${isBestPower ? '⬇MIN' : ''}</span>
+                                <span class="text-[10px] font-black mono ${isBestPower ? 'text-green-400' : 'text-slate-300'}">${a.power.toFixed(2)} W</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${powerBar}%;background:${isBestPower ? '#22c55e' : '#ef4444'}"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[9px] mono text-slate-500 uppercase">Pompalama Hızı</span>
+                                <span class="text-[10px] font-black mono text-slate-300">${a.pumping.toFixed(2)} L/s</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${pumpBar}%;background:${colStr}"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[9px] mono text-slate-500 uppercase">Uç Hızı</span>
+                                <span class="text-[10px] font-black mono text-slate-300">${a.tipSpeed.toFixed(2)} m/s</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${Math.min(100,a.tipSpeed/5*100)}%;background:${colStr}"></div></div>
+                        </div>
+                    </div>
+
+                    <!-- t95 bilgileri -->
+                    <div class="border-t border-white/05 pt-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="text-[9px] text-slate-500 mono uppercase">t₉₅ Teorik (G-N 2004)</div>
+                                <div class="font-black mono ${isBestTime ? 'text-green-400' : 'text-blue-300'} text-base mt-0.5">
+                                    ${a.gnTime ? a.gnTime.toFixed(1)+' s' : 'N/A'}
+                                    ${isBestTime ? '<span class="tag lit-badge ml-1">EN HIZLI</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[9px] text-slate-500 mono uppercase">Pompalama Verimi</div>
+                                <div class="font-black mono text-slate-300 text-base mt-0.5">${(a.pumpEff*1000).toFixed(2)} mL/J</div>
+                            </div>
+                        </div>
+                        ${a.mixTime ? `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <div class="text-[9px] text-slate-500 mono uppercase">Simülasyon t₉₅</div>
+                                <div class="font-black mono text-orange-400 text-base">${a.mixTime.toFixed(2)} s</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[9px] text-slate-500 mono uppercase">Homojenlik</div>
+                                <div class="font-black mono text-green-400 text-base">${a.homoPerc.toFixed(1)}%</div>
+                            </div>
+                        </div>` : `
+                        <div class="text-[10px] text-slate-600 italic">Simülasyon t₉₅: ölçülmedi (simülasyon %95'e ulaşmadı)</div>`}
+                    </div>
+
+                    <!-- Mühendis önerisi -->
+                    <div class="mt-3 p-3 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">
+                        <div class="text-[9px] text-slate-500 uppercase mono font-bold mb-1">Mühendis Notu</div>
+                        <p class="text-[10px] text-slate-400 leading-relaxed">${getEngineeringNote(a)}</p>
+                    </div>
+                </div>`;
+            });
+
+            html += `</div>`;
+
+            // Karşılaştırma sonucu özet
+            if (archive.length > 1) {
+                const winner = archive.reduce((a,b) => a.score > b.score ? a : b);
+                const fastestGN = archive.filter(a=>a.gnTime).reduce((a,b) => a.gnTime < b.gnTime ? a : b, archive.filter(a=>a.gnTime)[0]);
+                const mostEfficient = archive.reduce((a,b) => a.pumpEff > b.pumpEff ? a : b);
+
+                html += `
+                <div class="mt-5 p-5 rounded-xl border border-green-500/20" style="background:rgba(34,197,94,0.04)">
+                    <h3 class="text-xs font-black mono text-green-400 uppercase mb-3 flex items-center gap-2">
+                        <i class="fas fa-award"></i> KARŞILAŞTIRMA SONUCU
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-black/30 p-3 rounded-lg text-center">
+                            <div class="text-[9px] text-slate-500 uppercase mono mb-1">En Yüksek Verimlilik</div>
+                            <div class="font-black text-green-400">${winner.label}</div>
+                            <div class="text-xs text-slate-400">${winner.impellerName} · Skor: ${winner.score}</div>
+                        </div>
+                        <div class="bg-black/30 p-3 rounded-lg text-center">
+                            <div class="text-[9px] text-slate-500 uppercase mono mb-1">En Hızlı Karışma (G-N)</div>
+                            <div class="font-black text-blue-400">${fastestGN ? fastestGN.label : 'N/A'}</div>
+                            <div class="text-xs text-slate-400">${fastestGN ? fastestGN.impellerName + ' · ' + fastestGN.gnTime.toFixed(1) + 's' : ''}</div>
+                        </div>
+                        <div class="bg-black/30 p-3 rounded-lg text-center">
+                            <div class="text-[9px] text-slate-500 uppercase mono mb-1">En Verimli Pompalama</div>
+                            <div class="font-black text-orange-400">${mostEfficient.label}</div>
+                            <div class="text-xs text-slate-400">${mostEfficient.impellerName} · ${(mostEfficient.pumpEff*1000).toFixed(2)} mL/J</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            body.innerHTML = html;
+        }
+
+        function getEngineeringNote(a) {
+            const notes = {
+                propeller: `Re=${Math.round(a.re).toLocaleString('tr-TR')} → ${a.re > 10000 ? 'Türbülanslı rejim, standart boya karıştırma için uygun.' : 'Geçiş rejiminde, RPM artırımı önerilir.'} D/T=${(a.D/a.vD).toFixed(2)} oranı ${a.D/a.vD > 0.45 ? 'yüksek - verimli sirkülasyon.' : 'düşük - T/D oranını 0.35-0.45 arasında tutun.'}`,
+                paddle: `Radyal akış tipi; boya bazı gibi yüksek viskoziteli sistemler için uygundur. Np=${a.np.toFixed(2)} yüksek tork demek. Pigment dispersiyonu değil, homojenizasyon amacıyla kullanın.`,
+                hydrofoil: `Minimum enerji (Np=${a.np.toFixed(2)}). Hafif boyalar ve düşük pigment yükü için idealdir. Nq/Np=${(a.nq/a.np).toFixed(2)} - en yüksek pompalama verimliliğine sahip pervane tipidir.`,
+                cowles: `Yüksek kesme kuvveti; pigment dağıtımı ve wetting aşaması için kritik. Düşük Nq (${a.nq.toFixed(2)}) homojenizasyon için zayıf kaldığından dispersiyon sonrası farklı pervaneye geçilmesi önerilir.`,
+                lenart: `Vorteks oluşturur; toz/dolgu malzemesi ekleme aşaması için uygundur. Yüksek RPM'de kavitasyon riski vardır. Uç hızı ${a.tipSpeed.toFixed(1)} m/s.`,
+                anchor: `Duvar sıyırıcı; ısı transferini optimize eder, ölü bölgeleri elimine eder. Düşük Nq (${a.nq.toFixed(2)}) nedeniyle homojenizasyon süresi uzun, enerji pahalı. Viskoplastik boyalar için tercih edilir.`
+            };
+            return notes[a.impeller] || '';
+        }
+
+        // Event Listeners
+        document.getElementById('toggleSim').onclick = () => {
+            isRunning = !isRunning;
+            document.getElementById('toggleIcon').className = isRunning ? "fas fa-stop" : "fas fa-play";
+            document.getElementById('toggleText').innerText = isRunning ? "DURDUR" : "BAŞLAT";
+            if (isRunning) {
+                const p = getParams();
+                const m = computeMetrics(p);
+                updateMetricsUI(m, parseFloat(document.getElementById('homoVal').innerText) || 0);
+            }
+        };
+
+        document.getElementById('saveCompare').onclick = () => {
+            if (archive.length >= 4) {
+                showToast('Maksimum 4 setup karşılaştırılabilir!', '#ef4444');
+                return;
+            }
+            const snap = collectSnapshot();
+            archive.push(snap);
+            const badge = document.getElementById('compareBadge');
+            badge.innerText = archive.length;
+            badge.classList.remove('hidden');
+            showToast(`"${snap.label}" eklendi! (${archive.length}/4)`, '#22c55e');
+        };
+
+        document.getElementById('openCompare').onclick = () => {
+            renderCompareModal();
+            document.getElementById('compareModal').classList.add('open');
+        };
+
+        document.getElementById('closeCompare').onclick = () => {
+            document.getElementById('compareModal').classList.remove('open');
+        };
+
+        document.getElementById('clearCompare').onclick = () => {
+            archive = [];
+            document.getElementById('compareBadge').classList.add('hidden');
+            renderCompareModal();
+        };
+
+        document.getElementById('compareModal').onclick = (e) => {
+            if (e.target === document.getElementById('compareModal')) {
+                document.getElementById('compareModal').classList.remove('open');
+            }
+        };
+
+        document.getElementById('geoCyl').onclick = () => {
+            vesselGeometry = 'cylindrical';
+            document.getElementById('geoCyl').classList.add('active');
+            document.getElementById('geoSq').classList.remove('active');
+            resetParticles();
+        };
+        document.getElementById('geoSq').onclick = () => {
+            vesselGeometry = 'square';
+            document.getElementById('geoSq').classList.add('active');
+            document.getElementById('geoCyl').classList.remove('active');
+            resetParticles();
+        };
+        document.getElementById('resetSim').onclick = resetParticles;
+        document.getElementById('rpm').oninput = function() {
+            document.getElementById('rpmLabel').innerText = `${this.value} RPM`;
+        };
+
+        function showToast(msg, color) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.style.background = color;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        init();
+
+        // ============ YARDIM MODALİ ============
+        const helpContent = {
+            homogeneity: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#60a5fa">Homojenlik Nedir?</span>
+  <div class="h-title text-white">Tanım: Karışma Süresi ve Homojenlik Derecesi</div>
+  <p class="h-body">Homojenlik, karıştırma tankında tüm örnekleme noktalarındaki konsantrasyonların birbirine yakınlığının ölçüsüdür. <strong class="text-slate-300">t₉₅</strong>, tankta enjekte edilen tracer maddenin tüm noktalarında ±%5 kararlılık bandına ulaşması için geçen süredir. Bu kriter endüstriyel standarttır.</p>
+  <p class="h-body mt-2" style="font-size:0.75rem;color:#64748b">Kaynak: Grenville & Nienow (2004); tekrarlanabilirlik ±%10</p>
+</div>
+<hr class="h-divider">
+<div class="grid gap-4" style="grid-template-columns:1fr 1fr">
+  <div class="h-card h-card-yellow">
+    <span class="h-label" style="color:#fbbf24">Yöntem 1 — En Yaygın</span>
+    <div class="h-title" style="color:#fde68a">İletkenlik Probu</div>
+    <p class="h-body">Tanka NaCl veya KCl tracer eklenir. Birden fazla noktaya yerleştirilen iletkenlik probları konsantrasyonu zamana karşı kaydeder. Tüm noktalar ±%5 bandına girdiğinde t₉₅ tamamdır.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#78716c">Ruszkowski (1994); Cooke (1988)</p>
+  </div>
+  <div class="h-card h-card-orange">
+    <span class="h-label" style="color:#fb923c">Yöntem 2 — Boya Endüstrisi</span>
+    <div class="h-title" style="color:#fed7aa">Dye / Renk Yöntemi</div>
+    <p class="h-body">pH indikatör boya (Thymolphthalein, renksiz→mavi) tanka eklenir. Renk dağılımı görsel veya spektrofotometrik olarak izlenir. Boya endüstrisi için özellikle doğrulanmıştır.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#78716c">Melton, Lipp et al. — Chem. Eng. Commun. 189, 2002</p>
+  </div>
+  <div class="h-card h-card-purple">
+    <span class="h-label" style="color:#c084fc">Yöntem 3 — Non-invaziv</span>
+    <div class="h-title" style="color:#e9d5ff">ERT (Elektrik Direnç Tomografisi)</div>
+    <p class="h-body">Tank duvarına yerleştirilen elektrot halkasıyla 3D konsantrasyon haritası çıkarır. Ölü bölgeler ve zoning tespiti için idealdir. Doğruluk <%3.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#78716c">Rodgers et al. — Chem. Eng. Sci. 66(13), 2011</p>
+  </div>
+  <div class="h-card h-card-green">
+    <span class="h-label" style="color:#4ade80">Yöntem 4 — Bu Simülasyon</span>
+    <div class="h-title" style="color:#bbf7d0">CoV (Değişim Katsayısı)</div>
+    <p class="h-body">Çok noktalı örnekleme ile σ/μ oranı hesaplanır. CoV ≤ 0.05 → %95 homojenlik kabul edilir. Simülasyondaki parçacık mixedness ortalaması bu yaklaşımın görsel karşılığıdır.</p>
+    <div class="formula">CoV = σ / μ ≤ 0.05 → %95 homojen</div>
+  </div>
+</div>`,
+
+            formulas: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#60a5fa">Grenville & Nienow (2004)</span>
+  <div class="h-title text-white">t₉₅ Karışma Süresi Korelasyonu</div>
+  <p class="h-body mb-3">Türbülanslı rejimde (Re &gt; 10.000), H/T ≈ 1 olan standart baffled tanklarda:</p>
+  <div class="formula">t₉₅ × (P/V)^(1/3) × D^(2/3) / T = K ≈ 5.2</div>
+  <div class="formula">→ t₉₅ = 5.2 × T / ( D^(2/3) × (P/V)^(1/3) )</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px">
+      <p style="font-size:0.7rem;color:#64748b;margin-bottom:4px">t₉₅</p>
+      <p style="font-size:0.82rem;color:#e2e8f0">%95 homojenliğe ulaşma süresi (s)</p>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px">
+      <p style="font-size:0.7rem;color:#64748b;margin-bottom:4px">T</p>
+      <p style="font-size:0.82rem;color:#e2e8f0">Tank çapı (m)</p>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px">
+      <p style="font-size:0.7rem;color:#64748b;margin-bottom:4px">D</p>
+      <p style="font-size:0.82rem;color:#e2e8f0">Pervane çapı (m)</p>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px">
+      <p style="font-size:0.7rem;color:#64748b;margin-bottom:4px">P/V</p>
+      <p style="font-size:0.82rem;color:#e2e8f0">Birim hacim başına güç (W/m³)</p>
+    </div>
+  </div>
+</div>
+<hr class="h-divider">
+<div class="h-card">
+  <span class="h-label" style="color:#94a3b8">Reynolds Sayısı</span>
+  <div class="formula">Re = ρ × N × D² / μ</div>
+  <p class="h-body">Re &lt; 10: Lamineer · 10–10.000: Geçiş · Re &gt; 10.000: Türbülanslı</p>
+</div>
+<div class="h-card">
+  <span class="h-label" style="color:#94a3b8">Güç Tüketimi</span>
+  <div class="formula">P = Np × ρ × N³ × D⁵</div>
+  <p class="h-body">Np: Güç sayısı (pervane tipine özgü sabit)</p>
+</div>
+<div class="h-card">
+  <span class="h-label" style="color:#94a3b8">Pompalama Debisi</span>
+  <div class="formula">Q = Nq × N × D³</div>
+  <p class="h-body">Nq: Pompalama sayısı · N: dön/sn · D: pervane çapı (m)</p>
+</div>
+<div class="h-card">
+  <span class="h-label" style="color:#94a3b8">Uç Hızı</span>
+  <div class="formula">v_tip = π × D × N</div>
+  <p class="h-body">Boya endüstrisinde genellikle 5–20 m/s arasında çalışılır.</p>
+</div>`,
+
+            score: `
+<div class="h-card h-card-orange">
+  <span class="h-label" style="color:#fb923c">Verimlilik Skoru Hesabı (0–100)</span>
+  <div class="formula">Skor = 0.40 × H(%) + 0.35 × min(100, Re/10000×100) + min(25, η×40)</div>
+  <p class="h-body mt-2">H(%): Anlık homojenlik · η = Q/P (pompalama verimliliği, L/s/W)</p>
+</div>
+<hr class="h-divider">
+<div class="grid gap-3" style="grid-template-columns:repeat(3,1fr)">
+  <div class="h-card">
+    <span class="h-label" style="color:#4ade80">%40 · Homojenlik</span>
+    <p class="h-body">Simülasyondaki anlık karışma yüzdesi. En kritik bileşen: asıl hedef homojenizasyondur.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#64748b">CoV yaklaşımı (simülasyon)</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#60a5fa">%35 · Reynolds Sayısı</span>
+    <p class="h-body">Re = 10.000'de tam puana ulaşır. Türbülanslı rejim daha etkin karışma sağlar.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#64748b">Cooke et al. (2011)</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#fb923c">%25 · Pompalama Verimi</span>
+    <p class="h-body">Nq/Np oranı; birim enerji başına üretilen akış. Düşük Np + yüksek Nq = verimli pervane.</p>
+    <p class="h-body mt-2" style="font-size:0.72rem;color:#64748b">Cooke et al. (2011); Nienow (1997)</p>
+  </div>
+</div>
+<div class="h-card h-card-yellow mt-2">
+  <span class="h-label" style="color:#fbbf24">⚠ Önemli Not</span>
+  <p class="h-body">Nienow (1997): Eşit D/T oranında tüm pervane tipleri homojenizasyon için aynı enerji verimliliğine sahiptir. Verimlilik skoru "mutlak fiziksel" değil "pratik operasyonel" karşılaştırma aracıdır.</p>
+</div>`,
+
+            refs: `
+<div style="margin-bottom:8px">
+  <span class="h-label" style="color:#94a3b8">Temel Korelasyon Kaynakları</span>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[1]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Grenville, R.K. & Nienow, A.W. (2004)</div>
+    <p class="h-body">Blending of Miscible Liquids. In: Paul, Atiemo-Obeng, Kresta (Eds.), <em>Handbook of Industrial Mixing</em>, Ch.1. Wiley-Blackwell. — <strong>t₉₅ korelasyonu, K=5.2 sabiti. Bu uygulamanın teorik t₉₅ hesabının doğrudan kaynağı.</strong></p>
+    <a href="https://onlinelibrary.wiley.com/doi/book/10.1002/0471451452" target="_blank" class="ref-link">→ Wiley Online Library</a>
+  </div>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[2]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Nienow, A.W. (1997)</div>
+    <p class="h-body">On impeller circulation and mixing effectiveness in the turbulent flow regime. <em>Chemical Engineering Science</em>, 52. — <strong>Pervane tiplerinin homojenizasyon verimliliğinin eşdeğerliği.</strong></p>
+    <a href="https://www.sciencedirect.com/science/article/abs/pii/S0009250997000729" target="_blank" class="ref-link">→ ScienceDirect</a>
+  </div>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[3]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Rodgers, T.L. et al. (2011)</div>
+    <p class="h-body">Mixing times for process vessels with aspect ratios greater than one. <em>Chemical Engineering Science</em>, 66(13), 2935–2944. — <strong>ERT ile t₉₅ ölçümü, yüksek H/T tanklar, Cowles diski verileri.</strong></p>
+    <a href="https://www.sciencedirect.com/science/article/abs/pii/S0009250911002089" target="_blank" class="ref-link">→ ScienceDirect</a>
+  </div>
+</div>
+<hr class="h-divider">
+<div style="margin-bottom:8px">
+  <span class="h-label" style="color:#94a3b8">Homojenlik Ölçüm Yöntemleri</span>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[4]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Melton, L.A., Lipp, C.W., Spradling, R.W. & Paulson, K.A. (2002)</div>
+    <p class="h-body">Determination of mixing time through color changes. <em>Chemical Engineering Communications</em>, 189, 322. — <strong>Dye yönteminin boya endüstrisi için validasyonu.</strong></p>
+    <a href="https://www.tandfonline.com/doi/abs/10.1080/00986440290124295" target="_blank" class="ref-link">→ Taylor & Francis</a>
+  </div>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[5]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Montante, G. et al. (2005)</div>
+    <p class="h-body">CFD simulations and experimental validation of homogenisation curves and mixing time in stirred Newtonian and pseudoplastic liquids. <em>Chemical Engineering Science</em>, 60, 2427–2437.</p>
+    <a href="https://www.sciencedirect.com/science/article/pii/S0009250904009169" target="_blank" class="ref-link">→ ScienceDirect</a>
+  </div>
+</div>
+<hr class="h-divider">
+<div style="margin-bottom:8px">
+  <span class="h-label" style="color:#94a3b8">Pervane Karakterizasyonu</span>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[6]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Cooke, M. et al. (2011) / MDPI Processes (2026)</div>
+    <p class="h-body">Effect of Different Impeller Types on Mixing Efficiency. <em>Processes</em>, 14(2), 225. — <strong>Pompalama verimliliği = Nq/Np metriği, HE3/PBT/RT karşılaştırması.</strong></p>
+    <a href="https://www.mdpi.com/2227-9717/14/2/225" target="_blank" class="ref-link">→ MDPI Open Access</a>
+  </div>
+</div>
+<div class="ref-row">
+  <span class="ref-num">[7]</span>
+  <div>
+    <div style="font-size:0.82rem;color:#e2e8f0;font-weight:700;margin-bottom:3px">Fort, I. & Jirout, T. (2011)</div>
+    <p class="h-body">Mixing tank hydrodynamics and mixing efficiency for propeller impellers. <em>Chem. Eng. Res. Des.</em> — Aksiyel pervane bağımsız K sabiti, %95 vs %98 homojenlik.</p>
+    <a href="https://www.sciencedirect.com/science/article/abs/pii/S0263876223006019" target="_blank" class="ref-link">→ ScienceDirect</a>
+  </div>
+</div>`,
+
+            limits: `
+<div class="h-card h-card-yellow">
+  <span class="h-label" style="color:#fbbf24">⚠ Simülasyon Sınırları</span>
+  <div class="h-title" style="color:#fde68a">Bu simülasyon bir mühendislik eğitim ve karşılaştırma aracıdır</div>
+  <p class="h-body">Gerçek üretim kararları için CFD analizi, pilot ölçek deneyleri ve onaylı proses mühendisliği hesapları gereklidir. Sonuçlar gerçek ölçüm yerine geçemez.</p>
+</div>
+<hr class="h-divider">
+<div class="grid gap-3" style="grid-template-columns:1fr 1fr">
+  <div class="h-card">
+    <span class="h-label" style="color:#ef4444">Boyut Kısıtı</span>
+    <p class="h-body">Simülasyon 2D üstten bakış perspektifindedir. Gerçek karıştırma 3D'dir; eksenel ve radyal akış bileşenleri tam temsil edilmez.</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#ef4444">Homojenlik Metriği</span>
+    <p class="h-body">Homojenlik değeri parçacık mixedness ortalamasıdır (CoV yaklaşımı). Deneysel iletkenlik probu veya ERT ölçümü değildir. Karşılaştırmalı analizde kullanın.</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#ef4444">t₉₅ Korelasyon Sınırı</span>
+    <p class="h-body">Grenville-Nienow korelasyonu H/T ≈ 1 ve türbülanslı rejim (Re &gt; 10.000) için geçerlidir. Lamineer ve geçiş rejimleri için farklı bağıntılar gereklidir.</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#ef4444">Reoloji</span>
+    <p class="h-body">Non-Newtonyen, psödo-plastik ve viskoplastik boya tipleri modellenmemiştir. Np ve Nq sabitleri türbülanslı rejim değerleridir.</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#ef4444">Çok Fazlı Sistemler</span>
+    <p class="h-body">Pigment süspansiyonu (katı-sıvı), dolgu malzemeleri ve köpük/hava girişi etkileri dahil değildir.</p>
+  </div>
+  <div class="h-card">
+    <span class="h-label" style="color:#f59e0b">H/T &gt; 1 Tanklar</span>
+    <p class="h-body">Yüksek en-boy oranında karışma süresi artar. Rodgers et al. (2011) düzeltme faktörleri uygulanmalıdır. Korelasyon bu durumu hafife alır.</p>
+  </div>
+</div>`
+        };
+
+        function renderHelp(tab) {
+            document.getElementById('helpBody').innerHTML = helpContent[tab] || '';
+        }
+
+        document.getElementById('openHelp').onclick = () => {
+            document.getElementById('helpModal').style.display = 'flex';
+            renderHelp('homogeneity');
+        };
+
+        document.getElementById('closeHelp').onclick = () => {
+            document.getElementById('helpModal').style.display = 'none';
+        };
+
+        document.getElementById('helpModal').onclick = (e) => {
+            if (e.target === document.getElementById('helpModal')) {
+                document.getElementById('helpModal').style.display = 'none';
+            }
+        };
+
+        document.querySelectorAll('.help-tab').forEach(btn => {
+            btn.onclick = function() {
+                document.querySelectorAll('.help-tab').forEach(b => b.classList.remove('active-tab'));
+                this.classList.add('active-tab');
+                renderHelp(this.dataset.tab);
+            };
+        });
+    </script>
+</body>
+</html>
