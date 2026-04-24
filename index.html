@@ -244,6 +244,16 @@
         .ref-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
         .ref-row:last-child { border-bottom: none; }
         .ref-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #475569; background: rgba(255,255,255,0.05); border-radius: 4px; padding: 2px 7px; flex-shrink: 0; margin-top: 2px; }
+
+        /* Page Level Tabs */
+        .page-tab { color: #64748b; font-size: 0.82rem; }
+        .page-tab:hover { background: rgba(255,255,255,0.05); color: #94a3b8; }
+        .active-page-tab { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+        #tabDispersion.active-page-tab { background: rgba(168,85,247,0.15); color: #c084fc; border-color: rgba(168,85,247,0.25); }
+
+        /* Dispersion compare button */
+        #dCompareBtn { background: #7c3aed; }
+        #dCompareBtn:hover { background: #6d28d9; }
     </style>
 </head>
 <body class="p-4">
@@ -272,6 +282,20 @@
         </div>
     </header>
 
+    <!-- Page Tabs -->
+    <nav class="max-w-[1600px] mx-auto mb-5">
+        <div class="flex gap-1 p-1 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:inline-flex">
+            <button id="tabMixing" class="page-tab active-page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
+                <i class="fas fa-rotate text-xs"></i> Karıştırma Simülatörü
+            </button>
+            <button id="tabDispersion" class="page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
+                <i class="fas fa-atom text-xs"></i> Dispersiyon / Boncuklu Değirmen
+            </button>
+        </div>
+    </nav>
+
+    <!-- PAGE: Mixing Simulator -->
+    <div id="pageMixing">
     <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-[1600px] mx-auto">
         
         <!-- Sol: Parametreler -->
@@ -329,9 +353,14 @@
                         <div>
                             <div class="flex justify-between mb-2">
                                 <label class="text-[9px] font-black text-slate-500 uppercase">Motor Hızı</label>
-                                <span id="rpmLabel" class="text-xs text-orange-500 font-black mono">600 RPM</span>
+                                <span id="rpmLabel" class="text-xs text-orange-500 font-black mono">100 RPM</span>
                             </div>
-                            <input type="range" id="rpm" min="0" max="3000" step="50" value="600" class="w-full">
+                            <input type="range" id="rpm" min="0" max="3000" step="10" value="100" class="w-full">
+                            <div class="flex justify-between mt-1">
+                                <span class="text-[9px] text-slate-700 mono">0</span>
+                                <span class="text-[9px] text-slate-700 mono">Tank: ≤300</span>
+                                <span class="text-[9px] text-slate-700 mono">Disperser: 500–3000</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -347,7 +376,77 @@
                             </div>
                             <div>
                                 <label class="text-[9px] font-bold text-slate-500 uppercase">Tank Çapı (m)</label>
-                                <input type="number" id="vesselD" value="0.6" step="0.1" class="input-dark mt-1">
+                                <input type="number" id="vesselD" value="1.3" step="0.1" class="input-dark mt-1">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Tank Yüksekliği (m)</label>
+                                <input type="number" id="vesselH" value="2.3" step="0.05" class="input-dark mt-1">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Boya Seviyesi (m)</label>
+                                <input type="number" id="liquidH" value="2.0" step="0.05" class="input-dark mt-1">
+                                <p class="text-[9px] text-slate-600 mt-1">Doluluk seviyesi</p>
+                            </div>
+                        </div>
+                        <!-- Motor Gücü -->
+                        <div class="mt-3 p-3 rounded-lg border" style="background:rgba(249,115,22,0.05);border-color:rgba(249,115,22,0.2)">
+                            <label class="text-[9px] font-black text-orange-400 uppercase tracking-wider block mb-2">
+                                <i class="fas fa-bolt mr-1"></i>Motor Gücü (W) — boş bırakılırsa teorik hesaplanır
+                            </label>
+                            <input type="number" id="motorPower" value="" placeholder="örn: 7.5" step="0.5" min="0" class="input-dark">
+                            <div id="motorWarning" class="hidden mt-2 text-[9px] leading-relaxed text-orange-300"></div>
+                        </div>
+                        <!-- Live tank info -->
+                        <div id="tankInfoBox" class="rounded-lg p-3 mt-1 border" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.06)">
+                            <div class="grid grid-cols-3 gap-2 text-center">
+                                <div>
+                                    <div class="text-[9px] text-slate-600 mono uppercase">Tank Hacmi</div>
+                                    <div id="tankVolDisplay" class="text-xs font-black mono text-slate-300">-- m³</div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] text-slate-600 mono uppercase">Boya Kütlesi</div>
+                                    <div id="paintMassDisplay" class="text-xs font-black mono text-slate-300">-- kg</div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] text-slate-600 mono uppercase">Doluluk</div>
+                                    <div id="fillRatioDisplay" class="text-xs font-black mono text-slate-300">--%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Njs için Pigment Girdileri -->
+                    <div class="space-y-3 pt-4 border-t border-slate-800/80">
+                        <div class="flex items-center gap-2 pb-1" style="color:#a78bfa">
+                            <i class="fas fa-circle-nodes text-xs"></i>
+                            <span class="text-[9px] font-black uppercase tracking-wider">Pigment (Njs için)</span>
+                            <span class="tag lit-info ml-auto">Zwietering 1958</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Tane Boyutu d_p (µm)</label>
+                                <input type="number" id="pigDp" value="5" step="1" min="0.1" class="input-dark mt-1">
+                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Dispersiyon sonrası pigmentin ortalama partikül çapı. Grindometre/Hegman okumana karşılık gelen µm değeri.</p>
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Pigment Yoğunluğu (kg/m³)</label>
+                                <input type="number" id="pigRho" value="4200" step="100" class="input-dark mt-1">
+                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Ham pigment malzemesinin öz yoğunluğu — pastanın değil. TiO₂: 4200 · Fe₂O₃: 4800 · Ftalo mavisi: 1600 · CB: 1800 · CaCO₃: 2700</p>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Toplam Katı Pigment Yükü (wt%)</label>
+                                <input type="number" id="pigX" value="20" step="1" min="1" max="80" class="input-dark mt-1">
+                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Boyada dibe çökme riski taşıyan tüm katı pigment ve dolguların toplam ağırlıkça yüzdesi. Örnek: TiO₂ %15 + CaCO₃ %10 + Fe₂O₃ %5 → buraya <span class="text-slate-400 font-bold">30</span> yazılır. Organik pigmentler düşük yoğunluklu olduğundan kritik değildir; ağır pigment ve dolgu maddelerini toplayın.</p>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">S Geometri Sabiti</label>
+                                <select id="njsS" class="input-dark mt-1">
+                                    <option value="4.0">Marine Propeller ~4.0</option>
+                                    <option value="3.0">Hydrofoil ~3.0</option>
+                                    <option value="6.0">Rushton / Düz Palet ~6.0</option>
+                                    <option value="5.5">Pitched Blade 45° ~5.5</option>
+                                </select>
+                                <p class="text-[9px] text-slate-600 mt-1 leading-relaxed">Pervane tipine göre Zwietering S sabiti. Küçük S → daha az RPM yeterli. Seçili pervaneye göre otomatik önerilir.</p>
                             </div>
                         </div>
                     </div>
@@ -492,38 +591,90 @@
                     <p id="reDisplay" class="text-2xl font-black mono text-indigo-400">Re = 0</p>
                 </div>
 
+                <!-- Taşma Uyarısı -->
+                <div id="overflowBox" class="hidden rounded-xl p-4 border mb-4 transition-all">
+                    <div class="flex items-start gap-3">
+                        <i id="overflowIcon" class="fas fa-triangle-exclamation text-lg mt-0.5 flex-shrink-0"></i>
+                        <div>
+                            <p id="overflowTitle" class="text-xs font-black uppercase tracking-wider mb-1"></p>
+                            <p id="overflowMsg" class="text-[10px] leading-relaxed"></p>
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <div class="rounded-lg p-2" style="background:rgba(0,0,0,0.3)">
+                                    <div class="text-[9px] text-slate-600 mono uppercase">Vorteks Derinliği</div>
+                                    <div id="vortexDepth" class="text-xs font-black mono text-slate-200">-- m</div>
+                                </div>
+                                <div class="rounded-lg p-2" style="background:rgba(0,0,0,0.3)">
+                                    <div class="text-[9px] text-slate-600 mono uppercase">Boşluk</div>
+                                    <div id="overflowMargin" class="text-xs font-black mono text-slate-200">-- m</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-3 mb-5">
+
+                    <!-- Reynolds -->
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-indigo-500/20">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="metric-label text-indigo-400">Reynolds Sayısı (Re)</p>
+                            <p id="reDisplay" class="text-xl font-black mono text-indigo-400">0</p>
+                        </div>
+                        <p id="reStatus" class="text-[10px] font-bold text-slate-400 italic mb-2">HAREKETSİZ</p>
+                        <p class="text-[9px] text-slate-600 leading-relaxed">Akışın türbülanslı mı yoksa lamineer mi olduğunu gösterir. <span class="text-indigo-400">Re &gt; 10.000 → türbülanslı</span> (iyi karışma). Re &lt; 100 → lamineer (zayıf karışma). Boya için Re &gt; 5.000 hedefleyin.</p>
+                    </div>
+
+                    <!-- Güç -->
                     <div class="bg-slate-900/60 p-4 rounded-xl border border-orange-500/20">
-                        <p class="metric-label mb-1 text-orange-400">Karışma Süresi (t₉₅)</p>
-                        <p id="mixTimeVal" class="text-2xl font-black mono text-white">-- s</p>
-                        <p class="text-[9px] text-slate-600 mt-1 uppercase font-bold tracking-widest">HEDEF: %95 HOMOJENLİK</p>
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="metric-label text-orange-400">Motor Gücü Tüketimi (P)</p>
+                            <p id="powerVal" class="text-xl font-black mono text-orange-400">-- W</p>
+                        </div>
+                        <p id="motorWarnDisplay" class="text-[9px] text-yellow-400 mb-2 leading-relaxed hidden"></p>
+                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane bu RPM'de boyadan çektiği teorik güç. <span class="text-orange-400">Motor gücü girildiyse gerçek güçle karşılaştırılır.</span> Motor bu değerden küçükse o RPM'e ulaşamaz — gerçek hız daha düşük olur.</p>
                     </div>
 
-                    <!-- t95 Teorik (Grenville-Nienow) -->
-                    <div class="bg-slate-900/60 p-3 rounded-xl border border-blue-500/15">
-                        <p class="metric-label mb-1 text-blue-400">t₉₅ Teorik (G-N Korelasyonu)</p>
-                        <p id="gnTimeVal" class="text-lg font-black mono text-blue-300">-- s</p>
-                        <p class="text-[9px] text-slate-600 mt-1">Grenville & Nienow, 2004 · ±%10</p>
+                    <!-- Uç Hızı -->
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-yellow-500/20">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="metric-label text-yellow-400">Pervane Uç Hızı (v_tip)</p>
+                            <p id="tipVal" class="text-xl font-black mono text-yellow-400">-- m/s</p>
+                        </div>
+                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane kanadının en uç noktasının hızı. <span class="text-yellow-400">Boya karıştırma için 1–4 m/s idealdir.</span> &lt;1 m/s → karışma zayıf. &gt;5 m/s → köpük, pigment bozunması, hava girişi riski. Disperser için 10–20 m/s normaldir.</p>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
-                            <p class="metric-label">GÜÇ (P)</p>
-                            <p id="powerVal" class="font-black text-sm mono text-slate-200">0.00 W</p>
+                    <!-- Sirkülasyon -->
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-green-500/20">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="metric-label text-green-400">Sirkülasyon Süresi</p>
+                            <p id="pumpVal" class="text-xl font-black mono text-green-400">-- s</p>
                         </div>
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
-                            <p class="metric-label">UÇ HIZI</p>
-                            <p id="tipVal" class="font-black text-sm mono text-slate-200">0.00 m/s</p>
-                        </div>
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
-                            <p class="metric-label">POMPALAMA</p>
-                            <p id="pumpVal" class="font-black text-sm mono text-slate-200">0.00 L/s</p>
-                        </div>
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
-                            <p class="metric-label">Np SAYISI</p>
-                            <p id="npVal" class="font-black text-sm mono text-slate-200">0.00</p>
-                        </div>
+                        <p id="pumpSubVal" class="text-[9px] text-slate-500 mono mb-2"></p>
+                        <p class="text-[9px] text-slate-600 leading-relaxed">Tank içeriğinin <span class="text-green-400">bir kez pervane üzerinden geçmesi için geçen süre</span> (= Tank hacmi ÷ Pompalama debisi). Ne kadar kısa → o kadar aktif sirkülasyon. Homojenlik için genellikle <span class="text-green-400">3–5 tam tur</span> gerekir.</p>
                     </div>
+
+                    <!-- Njs -->
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-purple-500/20">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="metric-label text-purple-400">Min. Süspansiyon Hızı (Njs)</p>
+                            <div class="text-right">
+                                <p id="njsVal" class="text-xl font-black mono text-purple-400">-- RPM</p>
+                                <p id="njsStatus" class="text-[9px] font-black mt-0.5">--</p>
+                            </div>
+                        </div>
+                        <div id="njsDetail" class="text-[9px] text-slate-600 leading-relaxed mb-2"></div>
+                        <p class="text-[9px] text-slate-600 leading-relaxed"><span class="text-purple-400">Zwietering (1958) Njs korelasyonu:</span> Pigmentin tanka dibine çökmemesi için gereken minimum RPM. Bu değerin altında pigment dibe oturur, boya homojen olmaz. Pigment tipi ve yüklemesi girilmeden hesaplanamaz.</p>
+                    </div>
+
+                    <!-- Np -->
+                    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/50">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="metric-label">Güç Sayısı (Np)</p>
+                            <p id="npVal" class="font-black text-sm mono text-slate-200">--</p>
+                        </div>
+                        <p class="text-[9px] text-slate-600 leading-relaxed">Pervane tipine özgü boyutsuz sabit. Küçük Np → az güç tüketir (hydrofoil: 0.3). Büyük Np → çok güç tüketir (düz palet: 2.1). Formülde: P = Np × ρ × N³ × D⁵</p>
+                    </div>
+
                 </div>
 
                 <!-- Verimlilik Skoru -->
@@ -558,8 +709,362 @@
             </div>
         </div>
     </main>
+    </div> <!-- end #pageMixing -->
 
-    <!-- Compare Modal -->
+    <!-- PAGE: Dispersion / Bead Mill -->
+    <div id="pageDispersion" style="display:none">
+    <div class="max-w-[1600px] mx-auto">
+
+      <!-- Dispersion Layout: 3-col -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Sol: Parametreler -->
+        <div class="lg:col-span-3 space-y-4 sidebar-scroll pr-1">
+
+          <!-- Makine Tipi -->
+          <div class="glass-card p-5">
+            <div class="flex items-center gap-2 mb-5" style="color:#a78bfa">
+              <i class="fas fa-industry text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Makine Konfigürasyonu</h2>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-[9px] font-black mb-2 text-slate-500 uppercase tracking-wider">Değirmen Tipi</label>
+                <select id="dMillType" class="input-dark">
+                  <option value="horizontal">Yatay Boncuklu Değirmen (Diskli)</option>
+                  <option value="vertical">Dikey Boncuklu Değirmen</option>
+                  <option value="basket">Basket Mill (Daldırma)</option>
+                  <option value="annular">Anüler Boşluklu Değirmen</option>
+                  <option value="highEnergy">Yüksek Enerjili Pin Mill</option>
+                </select>
+                <p id="dMillDesc" class="text-[10px] text-slate-500 mt-2 italic leading-relaxed"></p>
+              </div>
+
+              <div>
+                <label class="block text-[9px] font-black mb-2 text-slate-500 uppercase tracking-wider">Boncuk Materyali</label>
+                <select id="dBeadMat" class="input-dark">
+                  <option value="zro2">Zirkonyum Oksit / YTZ (ρ=6050)</option>
+                  <option value="glass">Cam Boncuk (ρ=2500)</option>
+                  <option value="alumina">Alümina / Al₂O₃ (ρ=3900)</option>
+                  <option value="steel">Çelik (ρ=7800)</option>
+                  <option value="tungsten">Tungsten Karbür (ρ=14800)</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Boncuk Çapı (mm)</label>
+                  <input type="number" id="dBeadSize" value="1.0" step="0.1" min="0.1" max="5" class="input-dark mt-1">
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Dolum Oranı (%)</label>
+                  <input type="number" id="dBeadFill" value="70" step="5" min="50" max="85" class="input-dark mt-1">
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between mb-2">
+                  <label class="text-[9px] font-black text-slate-500 uppercase">Uç Hızı (m/s)</label>
+                  <span id="dTipLabel" class="text-xs font-black mono" style="color:#a78bfa">8.0 m/s</span>
+                </div>
+                <input type="range" id="dTipSpeed" min="2" max="20" step="0.5" value="8" class="w-full" style="accent-color:#a855f7">
+              </div>
+            </div>
+          </div>
+
+          <!-- Pasta / Pigment -->
+          <div class="glass-card p-5">
+            <div class="flex items-center gap-2 mb-4" style="color:#fb923c">
+              <i class="fas fa-palette text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Pasta / Pigment</h2>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-[9px] font-black mb-2 text-slate-500 uppercase tracking-wider">Pigment Tipi</label>
+                <select id="dPigmentType" class="input-dark">
+                  <option value="organic">Organik Pigment (Phthalocyanine, vb.)</option>
+                  <option value="inorganic">İnorganik Pigment (TiO₂, Fe₂O₃)</option>
+                  <option value="carbon">Karbon Siyahı</option>
+                  <option value="extender">Dolgu / Extender (CaCO₃, Talk)</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Başlangıç d₅₀ (µm)</label>
+                  <input type="number" id="dD50Start" value="50" step="5" min="1" max="500" class="input-dark mt-1">
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Hedef d₅₀ (µm)</label>
+                  <input type="number" id="dD50Target" value="5" step="0.5" min="0.1" max="100" class="input-dark mt-1">
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Pigment % (ağırlık)</label>
+                  <input type="number" id="dPigConc" value="30" step="5" min="5" max="65" class="input-dark mt-1">
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Viskozite (Pa·s)</label>
+                  <input type="number" id="dViscosity" value="1.0" step="0.1" min="0.1" class="input-dark mt-1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Makine Parametreleri -->
+          <div class="glass-card p-5">
+            <div class="flex items-center gap-2 mb-4" style="color:#22c55e">
+              <i class="fas fa-cogs text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Makine Parametreleri</h2>
+            </div>
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Değirmen Hacmi (L)</label>
+                  <input type="number" id="dMillVol" value="1.0" step="0.5" min="0.1" class="input-dark mt-1">
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase">Debi / Flow (L/dk)</label>
+                  <input type="number" id="dFlow" value="5" step="1" min="0.5" class="input-dark mt-1">
+                </div>
+              </div>
+              <div>
+                <label class="text-[9px] font-bold text-slate-500 uppercase">Batch Hacmi (L)</label>
+                <input type="number" id="dBatchVol" value="20" step="5" min="1" class="input-dark mt-1">
+              </div>
+              <div>
+                <label class="text-[9px] font-bold text-slate-500 uppercase">Hedef Hegman Değeri</label>
+                <select id="dHegman" class="input-dark mt-1">
+                  <option value="5">Hegman 5 ≈ 40 µm</option>
+                  <option value="6" selected>Hegman 6 ≈ 25 µm</option>
+                  <option value="7">Hegman 7 ≈ 12.5 µm</option>
+                  <option value="7.5">Hegman 7.5 ≈ 6 µm</option>
+                  <option value="8">Hegman 8 ≈ ≤1 µm</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lit ref -->
+          <div class="glass-card p-4">
+            <div class="flex items-center gap-2 mb-3 text-blue-400">
+              <i class="fas fa-flask text-xs"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Temel Referanslar</h2>
+            </div>
+            <div class="space-y-2">
+              <div class="method-card">
+                <span class="text-[9px] font-black text-blue-300 uppercase block mb-1">Kwade Stres Modeli</span>
+                <p class="text-[10px] text-slate-400 leading-relaxed">SI = ρ_m × d_b³ × v_t² — stres yoğunluğu; boncuk boyutu, yoğunluk ve uç hızı ile değişir.</p>
+                <div class="formula-box mt-1" style="font-size:0.65rem">SI = ρ_b·d_b³·v_t²</div>
+              </div>
+              <div class="method-card" style="background:rgba(168,85,247,0.06);border-color:rgba(168,85,247,0.15)">
+                <span class="text-[9px] font-black text-purple-300 uppercase block mb-1">Spesifik Enerji → d₅₀</span>
+                <p class="text-[10px] text-slate-400 leading-relaxed">Schilde et al. (2010): d₅₀ ~ Em^(-α); α ≈ 0.35–0.55 organik pigmentler için.</p>
+                <div class="formula-box mt-1" style="font-size:0.65rem;color:#c084fc">d₅₀ = d₀ · (Em_ref/Em)^α</div>
+              </div>
+              <div class="method-card" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.15)">
+                <span class="text-[9px] font-black text-green-300 uppercase block mb-1">ASTM D1210</span>
+                <p class="text-[10px] text-slate-400 leading-relaxed">Hegman → µm dönüşümü: µm = (8 − H) × 12.5. Fineness of Grind standart ölçüm yöntemi.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orta: Görselleştirme + Sonuçlar -->
+        <div class="lg:col-span-6 space-y-4">
+
+          <!-- Particle size progress visualization -->
+          <div class="glass-card overflow-hidden" style="min-height:520px">
+            <div class="p-4 flex justify-between items-center bg-slate-900/80 border-b border-white/5">
+              <div class="flex items-center gap-4">
+                <span class="flex h-2 w-2 rounded-full animate-pulse" style="background:#a855f7"></span>
+                <h3 class="text-xs font-black tracking-widest text-slate-400 mono">ÖĞÜTME SİMÜLASYONU</h3>
+              </div>
+              <div class="flex gap-2">
+                <button id="dCalcBtn" class="px-4 py-1.5 rounded-full text-white text-[10px] font-black transition flex items-center gap-1.5" style="background:#7c3aed;hover:background:#6d28d9">
+                  <i class="fas fa-calculator"></i> HESAPLA
+                </button>
+                <button id="dResetBtn" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+                  <i class="fas fa-rotate-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Particle size reduction visual -->
+            <div class="p-5 bg-slate-950">
+              <div class="flex justify-between items-end mb-3">
+                <span class="text-[9px] text-slate-500 mono uppercase">Tane Boyutu Küçülmesi</span>
+                <span class="text-[9px] text-slate-500 mono uppercase">Geçiş Sayısı (Pas)</span>
+              </div>
+              <canvas id="dChart" width="440" height="260" style="width:100%;background:transparent"></canvas>
+              <div class="flex justify-between mt-2">
+                <span class="text-[9px] text-slate-600 mono">0 pas</span>
+                <span id="dChartMax" class="text-[9px] text-slate-600 mono">-- pas</span>
+              </div>
+            </div>
+
+            <!-- Hegman Visual -->
+            <div class="p-5 border-t border-white/5">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-[9px] font-black text-slate-400 mono uppercase">Hegman Kalibrasyon Çubuğu (ASTM D1210)</span>
+                <span class="tag" style="background:rgba(168,85,247,0.12);color:#c084fc;border:1px solid rgba(168,85,247,0.2)">STANDART</span>
+              </div>
+              <!-- Hegman bar visual -->
+              <div class="relative rounded-lg overflow-hidden mb-2" style="height:36px;background:linear-gradient(90deg,#1e1b4b,#312e81,#4c1d95,#5b21b6,#7c3aed,#a855f7,#c084fc,#e879f9,#f0abfc)">
+                <div class="absolute inset-0 flex items-center px-3">
+                  <div class="flex justify-between w-full">
+                    <span class="text-[9px] font-black text-white/70 mono">0</span>
+                    <span class="text-[9px] font-black text-white/70 mono">2</span>
+                    <span class="text-[9px] font-black text-white/70 mono">4</span>
+                    <span class="text-[9px] font-black text-white/70 mono">5</span>
+                    <span class="text-[9px] font-black text-white/70 mono">6</span>
+                    <span class="text-[9px] font-black text-white/70 mono">7</span>
+                    <span class="text-[9px] font-black text-white/70 mono">7.5</span>
+                    <span class="text-[9px] font-black text-white/70 mono">8</span>
+                  </div>
+                </div>
+                <!-- Current position indicator -->
+                <div id="dHegmanMarker" class="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg transition-all duration-500" style="left:0%">
+                  <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rounded-full shadow"></div>
+                </div>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-[9px] text-slate-600 mono">100 µm (kaba)</span>
+                <span id="dHegmanCurrent" class="text-xs font-black text-purple-400 mono">H = -- (-- µm)</span>
+                <span class="text-[9px] text-slate-600 mono">≤1 µm (nano)</span>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="p-5 border-t border-white/5">
+              <div class="flex justify-between items-end mb-2">
+                <span class="text-[9px] font-black text-slate-400 mono uppercase">Öğütme İlerlemesi</span>
+                <span id="dProgressPct" class="text-lg font-black mono" style="color:#a855f7">0%</span>
+              </div>
+              <div class="w-full h-2.5 rounded-full overflow-hidden border border-slate-800" style="background:#0a0f1e">
+                <div id="dProgressBar" class="h-full rounded-full transition-all duration-500" style="width:0%;background:linear-gradient(90deg,#7c3aed,#a855f7,#e879f9)"></div>
+              </div>
+              <div class="flex justify-between mt-1.5">
+                <span class="text-[9px] text-slate-600 mono" id="dD50Start2">d₅₀ = -- µm</span>
+                <span class="text-[9px] text-slate-600 mono">Hedef Hegman</span>
+                <span class="text-[9px] text-slate-600 mono" id="dD50Target2">d₅₀ = -- µm</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kwade Stress Intensity Chart -->
+          <div class="glass-card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2 text-blue-400">
+                <i class="fas fa-chart-line text-sm"></i>
+                <h3 class="font-black uppercase text-xs tracking-widest">Kwade Stres Analizi</h3>
+              </div>
+              <span class="tag lit-badge">Kwade 1999</span>
+            </div>
+            <canvas id="dStressChart" width="440" height="180" style="width:100%;background:transparent"></canvas>
+            <p class="text-[9px] text-slate-600 mt-2 mono">SI = ρ_b × d_b³ × v_t² — Optimal SI aralığı organik pigmentler için 10⁻³–10⁻¹ Nm</p>
+          </div>
+        </div>
+
+        <!-- Sağ: Sonuçlar -->
+        <div class="lg:col-span-3 space-y-4">
+
+          <!-- Ana Sonuçlar -->
+          <div class="glass-card p-5">
+            <div class="flex items-center gap-2 mb-5" style="color:#a78bfa">
+              <i class="fas fa-microchip text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Hesap Sonuçları</h2>
+            </div>
+
+            <!-- Stres Yoğunluğu -->
+            <div class="rounded-xl p-4 border text-center mb-4" style="background:#0a0f1e;border-color:rgba(168,85,247,0.2)">
+              <p class="text-[9px] font-black text-slate-600 uppercase mb-1 tracking-wider">Stres Yoğunluğu (SI)</p>
+              <p id="dSIVal" class="text-2xl font-black mono" style="color:#a855f7">-- Nm</p>
+              <p id="dSIStatus" class="text-[10px] mt-1 italic font-bold">--</p>
+            </div>
+
+            <div class="space-y-2 mb-5">
+              <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                <p class="metric-label" style="color:#a855f7">Spesifik Enerji (Em)</p>
+                <p id="dEmVal" class="font-black text-sm mono text-slate-200 mt-0.5">-- kWh/t</p>
+              </div>
+              <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                <p class="metric-label text-orange-400">Gerekli Pas Sayısı</p>
+                <p id="dPassesVal" class="text-2xl font-black mono text-orange-400 mt-0.5">-- pas</p>
+              </div>
+              <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                <p class="metric-label text-green-400">Teorik Süre</p>
+                <p id="dTimeVal" class="text-xl font-black mono text-green-400 mt-0.5">-- dk</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                  <p class="metric-label">Güç (kW)</p>
+                  <p id="dPowerVal" class="font-black text-sm mono text-slate-200">--</p>
+                </div>
+                <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                  <p class="metric-label">Rotor Hızı</p>
+                  <p id="dTipVal2" class="font-black text-sm mono text-slate-200">--</p>
+                </div>
+                <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                  <p class="metric-label">Boncuk d_b</p>
+                  <p id="dBeadVal" class="font-black text-sm mono text-slate-200">--</p>
+                </div>
+                <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
+                  <p class="metric-label">Hegman (sonuç)</p>
+                  <p id="dHegmanVal" class="font-black text-sm mono text-slate-200">--</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Öneriler -->
+            <div id="dRecommBox" class="rounded-xl p-4 border mb-4 hidden" style="background:rgba(124,58,237,0.07);border-color:rgba(167,139,250,0.2)">
+              <p class="text-[9px] font-black text-purple-400 uppercase mb-2">Mühendis Önerisi</p>
+              <p id="dRecommText" class="text-[10px] text-slate-400 leading-relaxed"></p>
+            </div>
+
+            <button id="dSaveCompare" class="w-full py-3 text-white font-black rounded-xl transition shadow-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2" style="background:#7c3aed">
+              <i class="fas fa-plus-circle"></i> Karşılaştırmaya Ekle
+            </button>
+          </div>
+
+          <!-- Boncuk Malzeme Bilgisi -->
+          <div class="glass-card p-4">
+            <div class="flex items-center gap-2 mb-3 text-slate-400">
+              <i class="fas fa-circle-info text-xs"></i>
+              <h3 class="font-black uppercase text-xs tracking-widest">Boncuk Özellikleri</h3>
+            </div>
+            <div id="dBeadInfo" class="space-y-2 text-[10px] text-slate-400"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compare Modal (Dispersion) -->
+      <div id="dCompareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;backdrop-filter:blur(8px);align-items:center;justify-content:center">
+        <div class="modal-box" style="max-width:1200px">
+          <div class="sticky top-0 z-10 p-5 border-b" style="background:#0d1628;border-color:rgba(255,255,255,0.06)">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-lg font-black mono">DİSPERSİYON KARŞILAŞTIRMA RAPORU</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Kwade Stres Modeli · Schilde et al. (2010) · ASTM D1210</p>
+              </div>
+              <div class="flex gap-2">
+                <button id="dClearCompare" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-900/40 text-red-400 hover:bg-red-900/60 transition border border-red-900/50">
+                  <i class="fas fa-trash mr-1"></i>Temizle
+                </button>
+                <button id="dCloseCompare" class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+                  <i class="fas fa-times text-sm"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="dCompareBody" class="p-5"></div>
+        </div>
+      </div>
+
+    </div> <!-- end max-w container -->
+    </div> <!-- end #pageDispersion -->
+
+    <!-- Compare Modal (Mixing) -->
     <div id="compareModal">
         <div class="modal-box">
             <!-- Modal Header -->
@@ -715,6 +1220,7 @@
         }
 
         function getParams() {
+            const motorPowerRaw = document.getElementById('motorPower').value;
             return {
                 impeller: document.getElementById('impellerType').value,
                 rpm: parseFloat(document.getElementById('rpm').value),
@@ -722,27 +1228,100 @@
                 viscosity: parseFloat(document.getElementById('viscosity').value),
                 D: parseFloat(document.getElementById('impellerD').value),
                 vD: parseFloat(document.getElementById('vesselD').value),
+                vH: parseFloat(document.getElementById('vesselH').value),
+                lH: parseFloat(document.getElementById('liquidH').value),
+                motorPower: motorPowerRaw !== '' ? parseFloat(motorPowerRaw) : null,
+                pigDp: parseFloat(document.getElementById('pigDp').value) * 1e-6, // µm → m
+                pigRho: parseFloat(document.getElementById('pigRho').value),
+                pigX: parseFloat(document.getElementById('pigX').value),
+                njsS: parseFloat(document.getElementById('njsS').value),
                 geometry: vesselGeometry
             };
         }
 
         function computeMetrics(p) {
             const spec = specs[p.impeller];
-            const n = p.rpm / 60;
+            const n = p.rpm / 60; // rps
             const re = n > 0 ? (p.D * p.D * n * p.density) / p.viscosity : 0;
             const power = spec.np * p.density * (n**3) * (p.D**5);
             const tipSpeed = Math.PI * p.D * n;
             const pumping = (spec.nq * n * (p.D**3)) * 1000;
-            const vol = Math.PI * (p.vD/2)**2 * p.vD; // H≈T kabul
-            const pv = vol > 0 ? power / vol : 0;
-            // Grenville-Nienow (2004): t95 * (P/V)^(1/3) * D^(2/3) / T = K=5.2
-            // → t95 = 5.2 * T / (D^(2/3) * (P/V)^(1/3))
-            let gnTime = null;
-            if (pv > 0 && n > 0) {
-                gnTime = 5.2 * p.vD / (Math.pow(p.D, 2/3) * Math.pow(pv, 1/3));
+
+            // Hacimler
+            const tankVol   = (Math.PI / 4) * Math.pow(p.vD, 2) * p.vH;
+            const liquidVol = (Math.PI / 4) * Math.pow(p.vD, 2) * p.lH;
+            const paintMass = liquidVol * p.density;
+            const fillRatio = p.vH > 0 ? (p.lH / p.vH) * 100 : 0;
+
+            // ε için (motor güç kontrolünde kullanılıyor)
+            const epsilon = liquidVol > 0 ? power / (p.density * liquidVol) : 0;
+            const pv = liquidVol > 0 ? power / liquidVol : 0;
+
+            // ── MOTOR GÜÇ KONTROLÜ ───────────────────────────────────────────
+            let P_gercek = power;
+            let motorWarn = null;
+            if (p.motorPower !== null && p.motorPower > 0) {
+                if (power > p.motorPower) {
+                    const n_max = Math.pow(p.motorPower / (spec.np * p.density * Math.pow(p.D, 5)), 1/3);
+                    const rpm_max = n_max * 60;
+                    motorWarn = `⚠ Motor yetersiz: ${p.rpm} RPM için teorik güç ${power.toFixed(0)} W, motor ${p.motorPower} W. Bu motor max ${rpm_max.toFixed(0)} RPM yapabilir. Hesap gerçek motor gücü ile yapıldı.`;
+                    P_gercek = p.motorPower;
+                } else {
+                    motorWarn = `✓ Motor yeterli: ${power.toFixed(0)} W çekiyor, motor ${p.motorPower} W (%${(power/p.motorPower*100).toFixed(0)} kapasite).`;
+                }
             }
+
+            // ── VORTEX & TAŞMA ──────────────────────────────────────────────
+            const vortexG = 9.81;
+            const R = p.vD / 2;
+            let vortexDepth = 0;
+            if (n > 0 && R > 0) {
+                const vortexRaw = (Math.PI * Math.PI * n * n * Math.pow(p.D, 4)) / (8 * vortexG * R * R);
+                const tipSp = Math.PI * p.D * n;
+                const frFactor = tipSp > 5 ? 1.0 : tipSp > 2 ? 0.5 : 0.2;
+                vortexDepth = vortexRaw * frFactor;
+            }
+            const vortexRise       = vortexDepth / 2;
+            const effectiveSurface = p.lH + vortexRise;
+            const overflowMargin   = p.vH - effectiveSurface;
+            const vortexBottom     = p.lH - vortexDepth;
+            const impellerPos      = p.lH * 0.25;
+            const airIngestion     = vortexBottom < impellerPos && n > 0;
+
             const pumpEff = power > 0 ? pumping / power : 0;
-            return { re, power, tipSpeed, pumping, np: spec.np, nq: spec.nq, pumpEff, gnTime, vol, pv };
+
+            // ── POMPALAMA & SİRKÜLASYON ─────────────────────────────────────
+            const Q_m3s = (spec.nq * n * Math.pow(p.D, 3));
+            const Q_Ls = Q_m3s * 1000;
+            const circTime = Q_m3s > 0 ? liquidVol / Q_m3s : null;
+
+            // ── ZWİETERİNG Njs ────────────────────────────────────────────────
+            // Njs = S × ν^0.1 × dp^0.2 × g^0.45 × (Δρ/ρ)^0.45 × X^0.13 / D^0.85
+            // Kaynak: Zwietering (1958), Chem. Eng. Sci. 8, 244
+            let njs = null, njsRpm = null, njsOk = null;
+            const nu = p.viscosity / p.density;
+            const Drho = p.pigRho - p.density;
+            if (Drho > 0 && p.pigDp > 0 && p.pigX > 0 && p.D > 0) {
+                njs = p.njsS
+                    * Math.pow(nu, 0.1)
+                    * Math.pow(p.pigDp, 0.2)
+                    * Math.pow(9.81, 0.45)
+                    * Math.pow(Drho / p.density, 0.45)
+                    * Math.pow(p.pigX, 0.13)
+                    / Math.pow(p.D, 0.85);
+                njsRpm = njs * 60;
+                njsOk = p.rpm >= njsRpm;
+            }
+
+            return {
+                re, power: P_gercek, tipSpeed, pumping, np: spec.np, nq: spec.nq, pumpEff,
+                liquidVol, tankVol, paintMass, fillRatio, pv, epsilon,
+                vortexDepth, vortexBottom, vortexRise, effectiveSurface,
+                overflowMargin, airIngestion,
+                Q_Ls, circTime,
+                njs, njsRpm, njsOk,
+                motorWarn
+            };
         }
 
         function init() {
@@ -755,42 +1334,134 @@
             particles = [];
             for (let i=0; i<particleCount; i++) particles.push(new Particle(i < particleCount/2 ? 'A' : 'B'));
             isRunning = false; startTime = 0; totalElapsed = 0; finalMixingTime = null;
-            document.getElementById('mixTimeVal').innerText = "-- s";
-            document.getElementById('mixTimeVal').className = "text-2xl font-black mono text-white";
             document.getElementById('currentTime').innerText = "0.00";
             document.getElementById('toggleIcon').className = "fas fa-play";
             document.getElementById('toggleText').innerText = "BAŞLAT";
         }
 
         function updateMetricsUI(m, homoPerc) {
+            const p = getParams();
+
+            // ── Reynolds ──────────────────────────────────────────────────────
             document.getElementById('reDisplay').innerText = `Re = ${Math.round(m.re).toLocaleString('tr-TR')}`;
-            document.getElementById('powerVal').innerText = `${m.power.toFixed(2)} W`;
-            document.getElementById('tipVal').innerText = `${m.tipSpeed.toFixed(2)} m/s`;
-            document.getElementById('pumpVal').innerText = `${m.pumping.toFixed(2)} L/s`;
-            document.getElementById('npVal').innerText = m.np.toFixed(2);
-            document.getElementById('rpmLabel').innerText = `${Math.round(document.getElementById('rpm').value)} RPM`;
-            if (m.gnTime !== null) {
-                document.getElementById('gnTimeVal').innerText = `${m.gnTime.toFixed(1)} s`;
+            const st = document.getElementById('reStatus');
+            if (m.re === 0)      { st.innerText = "Hareketsiz — RPM sıfır"; st.style.color = '#64748b'; }
+            else if (m.re < 100) { st.innerText = "Lamineer akış — karışma çok zayıf"; st.style.color = '#60a5fa'; }
+            else if (m.re < 10000) { st.innerText = "Geçiş rejimi — karışma orta"; st.style.color = '#f59e0b'; }
+            else                 { st.innerText = "Türbülanslı akış — iyi karışma"; st.style.color = '#4ade80'; }
+
+            // ── Güç ──────────────────────────────────────────────────────────
+            const pW = m.power;
+            const pStr = pW >= 1000 ? `${(pW/1000).toFixed(2)} kW` : `${pW.toFixed(1)} W`;
+            document.getElementById('powerVal').innerText = pStr;
+            const mwEl = document.getElementById('motorWarnDisplay');
+            if (m.motorWarn) {
+                mwEl.innerText = m.motorWarn;
+                mwEl.classList.remove('hidden');
+                mwEl.style.color = m.motorWarn.startsWith('✓') ? '#4ade80' : '#fbbf24';
             } else {
-                document.getElementById('gnTimeVal').innerText = "-- s";
+                mwEl.classList.add('hidden');
             }
 
-            const st = document.getElementById('reStatus');
-            if (m.re < 10) { st.innerText = "LAMİNER AKIŞ"; st.className = "text-xs font-bold text-blue-400 mb-1 italic"; }
-            else if (m.re > 10000) { st.innerText = "TÜRBÜLANSLI AKIŞ"; st.className = "text-xs font-bold text-green-400 mb-1 italic"; }
-            else { st.innerText = "GEÇİŞ REJİMİ"; st.className = "text-xs font-bold text-yellow-400 mb-1 italic"; }
+            // ── Uç Hızı ──────────────────────────────────────────────────────
+            document.getElementById('tipVal').innerText = `${m.tipSpeed.toFixed(2)} m/s`;
 
+            // ── Sirkülasyon Süresi ────────────────────────────────────────────
+            if (m.circTime !== null && m.circTime > 0) {
+                const circ = m.circTime;
+                const circStr = circ < 60
+                    ? `${circ.toFixed(0)} s / tur`
+                    : `${(circ/60).toFixed(1)} dk / tur`;
+                document.getElementById('pumpVal').innerText = circStr;
+                const turns3 = (circ * 3 / 60).toFixed(0);
+                const turns5 = (circ * 5 / 60).toFixed(0);
+                document.getElementById('pumpSubVal').innerText =
+                    `Q = ${m.Q_Ls.toFixed(1)} L/s · 3–5 tam tur → ${turns3}–${turns5} dk`;
+            } else {
+                document.getElementById('pumpVal').innerText = '-- s/tur';
+                document.getElementById('pumpSubVal').innerText = '';
+            }
+
+            // ── Njs ──────────────────────────────────────────────────────────
+            const njsEl = document.getElementById('njsVal');
+            const njsStEl = document.getElementById('njsStatus');
+            const njsDetEl = document.getElementById('njsDetail');
+            if (m.njsRpm !== null) {
+                njsEl.innerText = `${m.njsRpm.toFixed(0)} RPM`;
+                if (m.njsOk) {
+                    njsStEl.innerText = `✓ YETERLİ — çalışma ${p.rpm} RPM (${(p.rpm/m.njsRpm).toFixed(1)}× Njs)`;
+                    njsStEl.style.color = '#4ade80';
+                    njsDetEl.innerText = `Pigment tabanda birikmez. Çalışma hızı Njs'in ${(p.rpm/m.njsRpm).toFixed(1)} katı — süspansiyon tam.`;
+                    njsDetEl.style.color = '#4ade80';
+                } else {
+                    njsStEl.innerText = `✗ YETERSİZ — en az ${m.njsRpm.toFixed(0)} RPM gerekli!`;
+                    njsStEl.style.color = '#f87171';
+                    njsDetEl.innerText = `Mevcut ${p.rpm} RPM Njs altında. Pigment tanka dibine çöküyor → alttan, ortadan, üstten alınan örnekler farklı renk verir.`;
+                    njsDetEl.style.color = '#f87171';
+                }
+            } else {
+                njsEl.innerText = '-- RPM';
+                njsStEl.innerText = 'Pigment bilgisi girin';
+                njsStEl.style.color = '#64748b';
+                njsDetEl.innerText = '';
+            }
+
+            // ── Np ───────────────────────────────────────────────────────────
+            document.getElementById('npVal').innerText = m.np.toFixed(2);
+
+            // ── Tank bilgi kutusu ─────────────────────────────────────────────
+            document.getElementById('tankVolDisplay').innerText = m.tankVol.toFixed(3) + ' m³';
+            document.getElementById('paintMassDisplay').innerText = m.paintMass.toFixed(0) + ' kg';
+            document.getElementById('fillRatioDisplay').innerText = m.fillRatio.toFixed(0) + '%';
+            document.getElementById('rpmLabel').innerText = `${Math.round(p.rpm)} RPM`;
+
+            // ── Taşma & Vorteks ───────────────────────────────────────────────
+            const ob = document.getElementById('overflowBox');
+            if (p.rpm > 0 && (m.overflowMargin < 0 || m.airIngestion || m.vortexDepth > 0.05)) {
+                ob.classList.remove('hidden');
+                const icon = document.getElementById('overflowIcon');
+                const title = document.getElementById('overflowTitle');
+                const msg = document.getElementById('overflowMsg');
+                document.getElementById('vortexDepth').innerText = m.vortexDepth.toFixed(3) + ' m';
+                document.getElementById('overflowMargin').innerText =
+                    (m.overflowMargin >= 0 ? '+' : '') + m.overflowMargin.toFixed(3) + ' m';
+                if (m.overflowMargin < 0) {
+                    ob.style.background = 'rgba(239,68,68,0.10)'; ob.style.borderColor = 'rgba(239,68,68,0.35)';
+                    icon.className = 'fas fa-triangle-exclamation text-lg mt-0.5 flex-shrink-0 text-red-400';
+                    title.className = 'text-xs font-black uppercase tracking-wider mb-1 text-red-400';
+                    title.innerText = '⚠ TAŞMA RİSKİ — ÇALIŞTIRILMAMALI';
+                    msg.className = 'text-[10px] leading-relaxed text-red-300';
+                    const excessVol = ((m.effectiveSurface - p.vH) * (Math.PI/4) * p.vD**2 * 1000).toFixed(1);
+                    msg.innerText = `Bu RPM'de vorteks boya yüzeyini tank üstüne çıkarıyor. Yaklaşık ${excessVol} litre taşar. Boya seviyesini düşürün veya RPM azaltın.`;
+                } else if (m.airIngestion) {
+                    ob.style.background = 'rgba(245,158,11,0.10)'; ob.style.borderColor = 'rgba(245,158,11,0.30)';
+                    icon.className = 'fas fa-circle-exclamation text-lg mt-0.5 flex-shrink-0 text-yellow-400';
+                    title.className = 'text-xs font-black uppercase tracking-wider mb-1 text-yellow-400';
+                    title.innerText = '⚠ HAVA ÇEKME RİSKİ';
+                    msg.className = 'text-[10px] leading-relaxed text-yellow-300';
+                    msg.innerText = `Vorteks dibi pervane seviyesine yaklaşıyor. Hava çekme → köpük ve kavitasyon riski.`;
+                } else {
+                    ob.style.background = 'rgba(99,102,241,0.08)'; ob.style.borderColor = 'rgba(99,102,241,0.25)';
+                    icon.className = 'fas fa-circle-info text-lg mt-0.5 flex-shrink-0 text-indigo-400';
+                    title.className = 'text-xs font-black uppercase tracking-wider mb-1 text-indigo-400';
+                    title.innerText = 'ℹ VORTEKS OLUŞUYOR';
+                    msg.className = 'text-[10px] leading-relaxed text-indigo-300';
+                    msg.innerText = `Vorteks derinliği ${m.vortexDepth.toFixed(3)} m. Tank üstüne ${m.overflowMargin.toFixed(3)} m boşluk var — güvenli.`;
+                }
+            } else {
+                ob.classList.add('hidden');
+            }
+
+            // ── Verimlilik Skoru ──────────────────────────────────────────────
             const hWeight = homoPerc * 0.40;
             const reWeight = Math.min(100, (m.re / 10000) * 100) * 0.35;
-            const efficiencyFactor = m.pumpEff * 40;
-            const powerWeight = Math.min(25, efficiencyFactor);
+            const powerWeight = Math.min(25, m.pumpEff * 40);
             const totalScore = Math.min(100, Math.round(hWeight + reWeight + powerWeight));
-
             document.getElementById('scoreVal').innerText = totalScore;
             document.getElementById('scoreBar').style.width = `${totalScore}%`;
             const circumference = 138.2;
-            const offset = circumference - (totalScore / 100) * circumference;
-            document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+            document.getElementById('scoreCircle').style.strokeDashoffset =
+                circumference - (totalScore / 100) * circumference;
             const scoreColor = totalScore > 70 ? '#22c55e' : totalScore > 40 ? '#f59e0b' : '#ef4444';
             document.getElementById('scoreCircle').style.stroke = scoreColor;
             document.getElementById('scoreVal').style.color = scoreColor;
@@ -819,16 +1490,8 @@
 
             if (isRunning) {
                 if (startTime === 0) startTime = Date.now();
-                if (finalMixingTime === null) {
-                    totalElapsed = (Date.now() - startTime) / 1000;
-                    document.getElementById('currentTime').innerText = totalElapsed.toFixed(2);
-                }
-                if (homoPerc >= 95 && finalMixingTime === null) {
-                    finalMixingTime = totalElapsed;
-                    const el = document.getElementById('mixTimeVal');
-                    el.innerText = `${finalMixingTime.toFixed(2)} s`;
-                    el.className = "text-2xl font-black mono text-green-400 animate-pulse";
-                }
+                totalElapsed = (Date.now() - startTime) / 1000;
+                document.getElementById('currentTime').innerText = totalElapsed.toFixed(2);
                 const m = computeMetrics(p);
                 updateMetricsUI(m, homoPerc);
             }
@@ -853,13 +1516,9 @@
             const m = computeMetrics(p);
             const homoEl = document.getElementById('homoVal').innerText;
             const homoPerc = parseFloat(homoEl) || 0;
-            const scoreEl = parseInt(document.getElementById('scoreVal').innerText) || 0;
-            const mixTime = finalMixingTime;
-
             const hWeight = homoPerc * 0.40;
             const reWeight = Math.min(100, (m.re / 10000) * 100) * 0.35;
-            const efficiencyFactor = m.pumpEff * 40;
-            const powerWeight = Math.min(25, efficiencyFactor);
+            const powerWeight = Math.min(25, m.pumpEff * 40);
             const totalScore = Math.min(100, Math.round(hWeight + reWeight + powerWeight));
 
             return {
@@ -873,6 +1532,8 @@
                 viscosity: p.viscosity,
                 D: p.D,
                 vD: p.vD,
+                vH: p.vH,
+                lH: p.lH,
                 re: m.re,
                 power: m.power,
                 tipSpeed: m.tipSpeed,
@@ -881,12 +1542,20 @@
                 nq: m.nq,
                 pumpEff: m.pumpEff,
                 gnTime: m.gnTime,
+                gnTimeMin: m.gnTimeMin,
                 homoPerc: homoPerc,
-                mixTime: mixTime,
+                mixTime: finalMixingTime,
                 score: totalScore,
                 flowType: specs[p.impeller].flowType,
                 shear: specs[p.impeller].shear,
-                color: specs[p.impeller].color
+                color: specs[p.impeller].color,
+                tankVol: m.tankVol,
+                liquidVol: m.liquidVol,
+                paintMass: m.paintMass,
+                fillRatio: m.fillRatio,
+                overflowMargin: m.overflowMargin,
+                airIngestion: m.airIngestion,
+                vortexDepth: m.vortexDepth
             };
         }
 
@@ -946,7 +1615,7 @@
                     <td class="py-2 pr-4 mono text-slate-300">${a.rpm}</td>
                     <td class="py-2 pr-4 mono ${a.re > 10000 ? 'text-green-400' : a.re > 10 ? 'text-yellow-400' : 'text-blue-400'}">${Math.round(a.re).toLocaleString('tr-TR')}</td>
                     <td class="py-2 pr-4 mono ${a.power === best.power ? 'text-green-400 font-bold' : 'text-slate-300'}">${a.power.toFixed(2)}</td>
-                    <td class="py-2 pr-4 mono ${a.gnTime && a.gnTime === best.gnTime ? 'text-green-400 font-bold' : 'text-slate-300'}">${a.gnTime ? a.gnTime.toFixed(1) : '--'}</td>
+                    <td class="py-2 pr-4 mono ${a.gnTime && a.gnTime === best.gnTime ? 'text-green-400 font-bold' : 'text-slate-300'}">${a.gnTime ? (a.gnTime >= 60 ? (a.gnTime/60).toFixed(1)+' dk' : a.gnTime.toFixed(0)+' s') : '--'}</td>
                     <td class="py-2 pr-4">
                         <div class="flex items-center gap-2">
                             <div class="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -1074,7 +1743,7 @@
                             <div>
                                 <div class="text-[9px] text-slate-500 mono uppercase">t₉₅ Teorik (G-N 2004)</div>
                                 <div class="font-black mono ${isBestTime ? 'text-green-400' : 'text-blue-300'} text-base mt-0.5">
-                                    ${a.gnTime ? a.gnTime.toFixed(1)+' s' : 'N/A'}
+                                    ${a.gnTime ? (a.gnTime >= 60 ? (a.gnTime/60).toFixed(1)+' dk' : a.gnTime.toFixed(0)+' s') : 'N/A'}
                                     ${isBestTime ? '<span class="tag lit-badge ml-1">EN HIZLI</span>' : ''}
                                 </div>
                             </div>
@@ -1127,7 +1796,7 @@
                         <div class="bg-black/30 p-3 rounded-lg text-center">
                             <div class="text-[9px] text-slate-500 uppercase mono mb-1">En Hızlı Karışma (G-N)</div>
                             <div class="font-black text-blue-400">${fastestGN ? fastestGN.label : 'N/A'}</div>
-                            <div class="text-xs text-slate-400">${fastestGN ? fastestGN.impellerName + ' · ' + fastestGN.gnTime.toFixed(1) + 's' : ''}</div>
+                            <div class="text-xs text-slate-400">${fastestGN ? fastestGN.impellerName + ' · ' + (fastestGN.gnTime >= 60 ? (fastestGN.gnTime/60).toFixed(1)+' dk' : fastestGN.gnTime.toFixed(0)+'s') : ''}</div>
                         </div>
                         <div class="bg-black/30 p-3 rounded-lg text-center">
                             <div class="text-[9px] text-slate-500 uppercase mono mb-1">En Verimli Pompalama</div>
@@ -1214,7 +1883,32 @@
         document.getElementById('resetSim').onclick = resetParticles;
         document.getElementById('rpm').oninput = function() {
             document.getElementById('rpmLabel').innerText = `${this.value} RPM`;
+            updateTankInfoLive();
         };
+
+        // Live update tank info on geometry changes
+        ['vesselD','vesselH','liquidH','density'].forEach(id => {
+            document.getElementById(id).oninput = updateTankInfoLive;
+        });
+
+        function updateTankInfoLive() {
+            const p = getParams();
+            const tankVol = (Math.PI / 4) * Math.pow(p.vD, 2) * p.vH;
+            const liquidVol = (Math.PI / 4) * Math.pow(p.vD, 2) * p.lH;
+            const paintMass = liquidVol * p.density;
+            const fillRatio = p.vH > 0 ? (p.lH / p.vH) * 100 : 0;
+            document.getElementById('tankVolDisplay').innerText = tankVol.toFixed(3) + ' m³';
+            document.getElementById('paintMassDisplay').innerText = paintMass.toFixed(0) + ' kg';
+            document.getElementById('fillRatioDisplay').innerText = fillRatio.toFixed(0) + '%';
+            // boya seviyesi tank yüksekliğini geçerse uyar
+            if (p.lH > p.vH) {
+                document.getElementById('fillRatioDisplay').innerText = '⚠ >100%';
+                document.getElementById('fillRatioDisplay').style.color = '#ef4444';
+            } else {
+                document.getElementById('fillRatioDisplay').style.color = fillRatio > 90 ? '#f59e0b' : '';
+            }
+        }
+        updateTankInfoLive();
 
         function showToast(msg, color) {
             const toast = document.getElementById('toast');
@@ -1470,6 +2164,546 @@
                 renderHelp(this.dataset.tab);
             };
         });
+        // ============ PAGE TAB SWITCHING ============
+        document.getElementById('tabMixing').onclick = () => {
+            document.getElementById('pageMixing').style.display = '';
+            document.getElementById('pageDispersion').style.display = 'none';
+            document.getElementById('tabMixing').classList.add('active-page-tab');
+            document.getElementById('tabDispersion').classList.remove('active-page-tab');
+        };
+        document.getElementById('tabDispersion').onclick = () => {
+            document.getElementById('pageMixing').style.display = 'none';
+            document.getElementById('pageDispersion').style.display = '';
+            document.getElementById('tabMixing').classList.remove('active-page-tab');
+            document.getElementById('tabDispersion').classList.add('active-page-tab');
+            updateBeadInfo();
+        };
+
+        // ============ DISPERSION ENGINE ============
+        const dMillSpecs = {
+            horizontal: { name: "Yatay Diskli Değirmen", desc: "Yatay eksenli diskli rotor. Boya endüstrisi standardı. Yüksek verimlilik, dar dwell time dağılımı. En yaygın pigment pastası üretim ekipmanı.", powerFactor: 1.0, effFactor: 1.0 },
+            vertical:   { name: "Dikey Değirmen", desc: "Dikey eksenli, düşük boncuk aşınması. Boncuk hareketi gravitasyondan etkilenir. Coarse grind için tercih edilir.", powerFactor: 0.85, effFactor: 0.9 },
+            basket:     { name: "Basket Mill (Daldırma)", desc: "Değirmen kafesi tanka daldırılır. Küçük batch için idealdir; ölçek büyütme zordur. In-situ öğütme.", powerFactor: 0.70, effFactor: 0.75 },
+            annular:    { name: "Anüler Boşluklu Değirmen", desc: "Dar anüler boşluk, çok dar RTD. En dar tane boyutu dağılımı. Nano pigment ve hassas dispersion için.", powerFactor: 1.20, effFactor: 1.15 },
+            highEnergy: { name: "Yüksek Enerjili Pin Mill", desc: "Pin rotor; çok yüksek uç hızı. Nano boyutlara iner. Yüksek enerji tüketimi, soğutma kritik.", powerFactor: 1.40, effFactor: 1.25 }
+        };
+
+        const dBeadSpecs = {
+            zro2:     { name: "YTZ (Zr₂O / YTZP)", density: 6050, mohs: 9, note: "En yaygın profesyonel seçim. Düşük aşınma, yüksek yoğunluk = yüksek SI. Gıda uyumlu değil.", color: "#60a5fa" },
+            glass:    { name: "Cam Boncuk", density: 2500, mohs: 6, note: "Düşük maliyet. Düşük SI nedeniyle iri pigmentler için. Yüksek hızda kırılma riski.", color: "#94a3b8" },
+            alumina:  { name: "Alümina (Al₂O₃)", density: 3900, mohs: 9, note: "Orta SI, düşük maliyetli seramik. Renk-kritik uygulamalarda dikkat (beyaz pigment etkisi).", color: "#e2e8f0" },
+            steel:    { name: "Çelik Bilyalar", density: 7800, mohs: 8, note: "Yüksek SI. Metal kontaminasyonu riski. Renk-toleranslı koyu pigmentler için kullanılabilir.", color: "#94a3b8" },
+            tungsten: { name: "Tungsten Karbür (WC)", density: 14800, mohs: 9.5, note: "En yüksek SI. Aşırı yıpranma sorunu. Sert/refrakter pigmentler için araştırma amaçlı.", color: "#fbbf24" }
+        };
+
+        const dPigmentSpecs = {
+            organic:   { name: "Organik Pigment", hardness: 2.5, alpha: 0.45, emRef: 200, note: "Phthalo Blue/Green, Quinacridone, vb. Yumuşak, düşük Em gerektirir. Boncuk boyutuna duyarlı.", color: "#f97316" },
+            inorganic: { name: "İnorganik Pigment (TiO₂)", hardness: 6.5, alpha: 0.35, emRef: 500, note: "TiO₂, Fe₂O₃, vb. Sert kristaller. Yüksek SI ve Em gerektirir.", color: "#e2e8f0" },
+            carbon:    { name: "Karbon Siyahı", hardness: 1.5, alpha: 0.55, emRef: 150, note: "Yüksek yüzey alanı. Çok küçük primer partikül (~20 nm). Öğütme aggregat kırar, primer değil.", color: "#475569" },
+            extender:  { name: "Dolgu / Extender", hardness: 3.0, alpha: 0.30, emRef: 100, note: "CaCO₃, Talk, BaSO₄. Büyük, lamellar. Düşük SI yeterli. Enerji gereksinimi düşük.", color: "#a3e635" }
+        };
+
+        let dArchive = [];
+        let dChartData = [];
+
+        function dGetParams() {
+            return {
+                millType: document.getElementById('dMillType').value,
+                beadMat: document.getElementById('dBeadMat').value,
+                beadSize: parseFloat(document.getElementById('dBeadSize').value) / 1000, // m
+                beadFill: parseFloat(document.getElementById('dBeadFill').value) / 100,
+                tipSpeed: parseFloat(document.getElementById('dTipSpeed').value),
+                pigmentType: document.getElementById('dPigmentType').value,
+                d50Start: parseFloat(document.getElementById('dD50Start').value),
+                d50Target: parseFloat(document.getElementById('dD50Target').value),
+                pigConc: parseFloat(document.getElementById('dPigConc').value) / 100,
+                viscosity: parseFloat(document.getElementById('dViscosity').value),
+                millVol: parseFloat(document.getElementById('dMillVol').value),
+                flow: parseFloat(document.getElementById('dFlow').value),
+                batchVol: parseFloat(document.getElementById('dBatchVol').value),
+                hegmanTarget: parseFloat(document.getElementById('dHegman').value)
+            };
+        }
+
+        function hegmanToMicron(h) { return (8 - h) * 12.5; }
+        function micronToHegman(m) { return Math.max(0, Math.min(8, 8 - m / 12.5)); }
+
+        function dCompute(p) {
+            const bead = dBeadSpecs[p.beadMat];
+            const pig = dPigmentSpecs[p.pigmentType];
+            const mill = dMillSpecs[p.millType];
+
+            // Kwade Stress Intensity: SI = rho_b * d_b^3 * v_t^2
+            const SI = bead.density * Math.pow(p.beadSize, 3) * Math.pow(p.tipSpeed, 2);
+
+            // Stress Number ~ 1/d_b^3 * v_t * beadFill * time (relative)
+            // Power estimate: P = C * rho_slurry * v_t^2 * beadFill * V_mill * mill_factor
+            const rhoSlurry = p.viscosity * 1000 * 0.6 + 1200 * 0.4; // approx
+            const powerKW = 0.08 * Math.pow(p.tipSpeed, 2.2) * p.beadFill * p.millVol * mill.powerFactor;
+
+            // Dwell time per pass (min)
+            const dwellPerPass = p.millVol / p.flow; // minutes
+
+            // Specific energy input per pass (kWh/t):
+            // Em_per_pass = P [kW] * dwell [h] / mass [t]
+            const massKg = p.batchVol * rhoSlurry / 1000; // kg (approx using slurry density)
+            const massT = massKg / 1000;
+            const emPerPass = (powerKW * (dwellPerPass / 60)) / massT; // kWh/t per pass
+
+            // Schilde et al. (2010): d50 = d50_0 * (Em_ref / Em)^alpha
+            // → Em needed to reach target d50:
+            // Em = Em_ref * (d50_0 / d50_target)^(1/alpha)
+            const emNeeded = pig.emRef * Math.pow(p.d50Start / p.d50Target, 1 / pig.alpha) * mill.effFactor;
+            const passes = Math.max(1, Math.ceil(emNeeded / emPerPass));
+            const totalTime = passes * dwellPerPass; // minutes
+
+            // Hegman result from target d50
+            const hegmanResult = micronToHegman(p.d50Target);
+
+            // SI status
+            const siNm = SI * 1e3; // convert rough units for display
+            let siStatus = "", siColor = "";
+            if (SI < 1e-6) { siStatus = "ÇOK DÜŞÜK — Öğütme yetersiz"; siColor = "#ef4444"; }
+            else if (SI < 1e-4) { siStatus = "UYGUN — Organik pigment aralığı"; siColor = "#22c55e"; }
+            else if (SI < 1e-2) { siStatus = "YÜKSEK — İnorganik/sert pigment"; siColor = "#f59e0b"; }
+            else { siStatus = "ÇOK YÜKSEK — Aşırı kırma riski"; siColor = "#ef4444"; }
+
+            // d50 curve for chart
+            const curvePoints = [];
+            for (let pass = 0; pass <= passes; pass++) {
+                const emAtPass = emPerPass * pass;
+                const d50AtPass = emAtPass > 0
+                    ? p.d50Start * Math.pow(pig.emRef / (pig.emRef + emAtPass), pig.alpha)
+                    : p.d50Start;
+                curvePoints.push({ pass, d50: Math.max(p.d50Target * 0.8, d50AtPass) });
+            }
+
+            // Optimization suggestion
+            let recomm = "";
+            if (SI < 1e-6) recomm = `Stres yoğunluğu çok düşük. Boncuk boyutunu artırın (önerilen: ${(p.beadSize*1000*2).toFixed(1)} mm) veya uç hızını ${(p.tipSpeed * 1.5).toFixed(1)} m/s'ye çıkarın.`;
+            else if (passes > 30) recomm = `Teorik pas sayısı yüksek (${passes}). Boncuk boyutunu küçültün veya hedef d₅₀'yi gözden geçirin. Küçük boncuk (0.3-0.5 mm) organik pigmentler için %30-50 daha hızlı öğütür.`;
+            else if (p.beadSize * 1000 > 2 && pig.alpha > 0.4) recomm = `Organik pigment için boncuk boyutu büyük (${(p.beadSize*1000).toFixed(1)} mm). 0.5-1.0 mm arası deneyin; Oliver+Batlle (2025) verilerine göre %34 süre tasarrufu sağlayabilir.`;
+            else recomm = `Setup makul görünüyor. Kalite kontrol için Hegman H${hegmanResult.toFixed(1)} ≈ ${p.d50Target} µm hedef. Üretimde ASTM D1210 ile doğrulayın.`;
+
+            return { SI, siNm, siStatus, siColor, powerKW, emPerPass, emNeeded, passes, totalTime, hegmanResult, curvePoints, massKg, recomm };
+        }
+
+        function updateBeadInfo() {
+            const mat = document.getElementById('dBeadMat').value;
+            const bead = dBeadSpecs[mat];
+            document.getElementById('dBeadInfo').innerHTML = `
+                <div class="grid grid-cols-2 gap-2">
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px">
+                        <div class="text-[9px] text-slate-600 mono uppercase mb-1">Yoğunluk</div>
+                        <div class="font-black mono text-slate-200">${bead.density.toLocaleString()} kg/m³</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px">
+                        <div class="text-[9px] text-slate-600 mono uppercase mb-1">Mohs Sertlik</div>
+                        <div class="font-black mono text-slate-200">${bead.mohs}</div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed mt-2">${bead.note}</p>
+            `;
+        }
+
+        function drawDChart(curvePoints, d50Target) {
+            const canvas = document.getElementById('dChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!curvePoints || curvePoints.length < 2) return;
+
+            const pad = { top: 20, right: 20, bottom: 30, left: 55 };
+            const w = canvas.width - pad.left - pad.right;
+            const h = canvas.height - pad.top - pad.bottom;
+
+            const maxPass = curvePoints[curvePoints.length - 1].pass;
+            const maxD50 = curvePoints[0].d50;
+            const minD50 = Math.min(...curvePoints.map(p => p.d50)) * 0.7;
+
+            const xScale = p => pad.left + (p.pass / maxPass) * w;
+            const yScale = d => pad.top + h - ((d - minD50) / (maxD50 - minD50)) * h;
+
+            // Grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = pad.top + (i / 5) * h;
+                ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + w, y); ctx.stroke();
+            }
+
+            // Target line
+            ctx.strokeStyle = 'rgba(34,197,94,0.4)';
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.5;
+            const targetY = yScale(d50Target);
+            ctx.beginPath(); ctx.moveTo(pad.left, targetY); ctx.lineTo(pad.left + w, targetY); ctx.stroke();
+            ctx.fillStyle = '#4ade80';
+            ctx.font = '9px JetBrains Mono';
+            ctx.fillText(`Hedef ${d50Target} µm`, pad.left + 4, targetY - 4);
+            ctx.setLineDash([]);
+
+            // Curve
+            const gradient = ctx.createLinearGradient(pad.left, 0, pad.left + w, 0);
+            gradient.addColorStop(0, '#a855f7');
+            gradient.addColorStop(0.5, '#7c3aed');
+            gradient.addColorStop(1, '#4f46e5');
+
+            ctx.beginPath();
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2.5;
+            curvePoints.forEach((pt, i) => {
+                const x = xScale(pt); const y = yScale(pt.d50);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Fill under curve
+            ctx.beginPath();
+            curvePoints.forEach((pt, i) => {
+                const x = xScale(pt); const y = yScale(pt.d50);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.lineTo(xScale(curvePoints[curvePoints.length-1]), pad.top + h);
+            ctx.lineTo(pad.left, pad.top + h);
+            ctx.closePath();
+            const fillGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + h);
+            fillGrad.addColorStop(0, 'rgba(168,85,247,0.15)');
+            fillGrad.addColorStop(1, 'rgba(168,85,247,0)');
+            ctx.fillStyle = fillGrad;
+            ctx.fill();
+
+            // Axes labels
+            ctx.fillStyle = '#475569';
+            ctx.font = '9px JetBrains Mono';
+            ctx.textAlign = 'right';
+            [maxD50, (maxD50+minD50)/2, minD50].forEach(v => {
+                ctx.fillText(`${v.toFixed(0)}µm`, pad.left - 4, yScale(v) + 3);
+            });
+            ctx.textAlign = 'center';
+            [0, Math.floor(maxPass/2), maxPass].forEach(p => {
+                ctx.fillText(p, pad.left + (p/maxPass)*w, pad.top + h + 18);
+            });
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 9px JetBrains Mono';
+            ctx.fillText('Pas Sayısı →', pad.left + w/2, canvas.height - 2);
+        }
+
+        function drawStressChart(SI, beadSize, tipSpeed, beadDensity) {
+            const canvas = document.getElementById('dStressChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.width; const h = canvas.height;
+            const pad = 30;
+
+            // Draw SI vs bead size curve (vary bead size 0.1-5mm, fixed tip speed)
+            const sizes = [];
+            for (let d = 0.1; d <= 5.0; d += 0.1) sizes.push(d);
+            const SIs = sizes.map(d => beadDensity * Math.pow(d/1000, 3) * Math.pow(tipSpeed, 2));
+            const logSIs = SIs.map(s => Math.log10(Math.max(s, 1e-15)));
+            const minLog = Math.min(...logSIs); const maxLog = Math.max(...logSIs);
+
+            const xS = d => pad + ((d - 0.1) / 4.9) * (w - pad*2);
+            const yS = s => pad + (1 - (Math.log10(Math.max(s,1e-15)) - minLog) / (maxLog - minLog)) * (h - pad*2);
+
+            // Optimal range shading (10^-4 to 10^-2)
+            const optMin = 1e-4; const optMax = 1e-2;
+            const yOptMax = yS(optMin); const yOptMin = yS(optMax);
+            ctx.fillStyle = 'rgba(34,197,94,0.06)';
+            ctx.fillRect(pad, yOptMin, w - pad*2, yOptMax - yOptMin);
+            ctx.fillStyle = 'rgba(34,197,94,0.4)';
+            ctx.font = '8px JetBrains Mono';
+            ctx.fillText('Optimal SI aralığı', pad + 4, yOptMin + 10);
+
+            // Curve
+            ctx.beginPath();
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            sizes.forEach((d, i) => {
+                const x = xS(d); const y = yS(SIs[i]);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Current bead marker
+            const curX = xS(beadSize * 1000);
+            const curY = yS(SI);
+            ctx.beginPath();
+            ctx.arc(curX, curY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#f97316';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = '#fb923c';
+            ctx.font = 'bold 9px JetBrains Mono';
+            ctx.fillText(`SI: ${SI.toExponential(1)}`, curX + 8, curY - 6);
+
+            // Axes
+            ctx.fillStyle = '#475569'; ctx.font = '8px JetBrains Mono';
+            ctx.fillText('0.1', pad - 2, h - pad + 10);
+            ctx.fillText('2.5', xS(2.5), h - pad + 10);
+            ctx.fillText('5.0', w - pad + 4, h - pad + 10);
+            ctx.fillStyle = '#64748b'; ctx.font = 'bold 8px JetBrains Mono';
+            ctx.fillText('Boncuk Boyutu (mm) →', w/2, h - 4);
+        }
+
+        function dRunCalc() {
+            const p = dGetParams();
+            const r = dCompute(p);
+
+            // Update UI
+            document.getElementById('dSIVal').innerText = r.SI.toExponential(2) + ' Nm';
+            document.getElementById('dSIVal').style.color = r.siColor;
+            document.getElementById('dSIStatus').innerText = r.siStatus;
+            document.getElementById('dSIStatus').style.color = r.siColor;
+            document.getElementById('dEmVal').innerText = r.emNeeded.toFixed(1) + ' kWh/t';
+            document.getElementById('dPassesVal').innerText = r.passes + ' pas';
+            document.getElementById('dTimeVal').innerText = r.totalTime < 60
+                ? r.totalTime.toFixed(0) + ' dk'
+                : (r.totalTime / 60).toFixed(1) + ' saat';
+            document.getElementById('dPowerVal').innerText = r.powerKW.toFixed(2) + ' kW';
+            document.getElementById('dTipVal2').innerText = p.tipSpeed.toFixed(1) + ' m/s';
+            document.getElementById('dBeadVal').innerText = (p.beadSize*1000).toFixed(1) + ' mm';
+            document.getElementById('dHegmanVal').innerText = `H${r.hegmanResult.toFixed(1)} ≈ ${p.d50Target}µm`;
+
+            // Hegman marker position
+            const hegPct = (r.hegmanResult / 8) * 100;
+            document.getElementById('dHegmanMarker').style.left = hegPct + '%';
+            document.getElementById('dHegmanCurrent').innerText = `H = ${r.hegmanResult.toFixed(1)} (${p.d50Target} µm)`;
+
+            // Progress
+            const progress = Math.min(100, Math.max(0, ((p.d50Start - p.d50Target) / p.d50Start) * 100));
+            document.getElementById('dProgressBar').style.width = progress + '%';
+            document.getElementById('dProgressPct').innerText = progress.toFixed(0) + '%';
+            document.getElementById('dD50Start2').innerText = `d₅₀ = ${p.d50Start} µm`;
+            document.getElementById('dD50Target2').innerText = `d₅₀ = ${p.d50Target} µm`;
+            document.getElementById('dChartMax').innerText = r.passes + ' pas';
+
+            // Recommendation
+            document.getElementById('dRecommBox').classList.remove('hidden');
+            document.getElementById('dRecommText').innerText = r.recomm;
+
+            // Charts
+            drawDChart(r.curvePoints, p.d50Target);
+            const bead = dBeadSpecs[p.beadMat];
+            drawStressChart(r.SI, p.beadSize, p.tipSpeed, bead.density);
+        }
+
+        document.getElementById('dCalcBtn').onclick = dRunCalc;
+        document.getElementById('dResetBtn').onclick = () => {
+            ['dSIVal','dEmVal','dPassesVal','dTimeVal','dPowerVal','dTipVal2','dBeadVal','dHegmanVal'].forEach(id => {
+                document.getElementById(id).innerText = '--';
+            });
+            document.getElementById('dProgressBar').style.width = '0%';
+            document.getElementById('dProgressPct').innerText = '0%';
+            document.getElementById('dHegmanMarker').style.left = '0%';
+            document.getElementById('dRecommBox').classList.add('hidden');
+            const ctx1 = document.getElementById('dChart').getContext('2d');
+            ctx1.clearRect(0, 0, 440, 260);
+            const ctx2 = document.getElementById('dStressChart').getContext('2d');
+            ctx2.clearRect(0, 0, 440, 180);
+        };
+
+        document.getElementById('dTipSpeed').oninput = function() {
+            document.getElementById('dTipLabel').innerText = parseFloat(this.value).toFixed(1) + ' m/s';
+        };
+
+        // S sabitini pervane tipine göre otomatik güncelle
+        const njsSMap = {
+            propeller: '4.0', hydrofoil: '3.0',
+            paddle: '6.0', cowles: '6.0',
+            lenart: '5.5', anchor: '6.0'
+        };
+        document.getElementById('impellerType').onchange = function() {
+            const sVal = njsSMap[this.value] || '4.0';
+            document.getElementById('njsS').value = sVal;
+        };
+
+        document.getElementById('dMillType').onchange = () => {
+            const spec = dMillSpecs[document.getElementById('dMillType').value];
+            document.getElementById('dMillDesc').innerText = spec.desc;
+        };
+        document.getElementById('dMillDesc').innerText = dMillSpecs.horizontal.desc;
+
+        document.getElementById('dBeadMat').onchange = updateBeadInfo;
+
+        // Dispersion Archive
+        document.getElementById('dSaveCompare').onclick = () => {
+            if (dArchive.length >= 4) { showToast('Maksimum 4 setup!', '#ef4444'); return; }
+            const p = dGetParams();
+            const r = dCompute(p);
+            const snap = {
+                id: Date.now(),
+                label: `Disp. Setup ${dArchive.length + 1}`,
+                millType: dMillSpecs[p.millType].name,
+                beadMat: dBeadSpecs[p.beadMat].name,
+                beadSize: (p.beadSize * 1000).toFixed(1),
+                tipSpeed: p.tipSpeed,
+                pigment: dPigmentSpecs[p.pigmentType].name,
+                d50Start: p.d50Start,
+                d50Target: p.d50Target,
+                passes: r.passes,
+                totalTime: r.totalTime,
+                SI: r.SI,
+                emNeeded: r.emNeeded,
+                powerKW: r.powerKW,
+                hegmanResult: r.hegmanResult,
+                siStatus: r.siStatus,
+                siColor: r.siColor,
+                beadFill: (p.beadFill * 100).toFixed(0),
+                color: ['#f97316','#3b82f6','#a855f7','#22c55e'][dArchive.length % 4]
+            };
+            dArchive.push(snap);
+            document.getElementById('compareBadge').innerText = (archive.length || 0) + dArchive.length;
+            document.getElementById('compareBadge').classList.remove('hidden');
+            showToast(`"${snap.label}" eklendi! (${dArchive.length}/4)`, '#7c3aed');
+        };
+
+        // Dispersion Compare Modal
+        document.querySelector('#openCompare').addEventListener('click', () => {
+            if (document.getElementById('pageDispersion').style.display !== 'none' && dArchive.length > 0) {
+                renderDCompareModal();
+                document.getElementById('dCompareModal').style.display = 'flex';
+                return;
+            }
+        });
+
+        // Also a dedicated compare button in dispersion (via main compare btn when on disp page)
+        const origOpenCompare = document.getElementById('openCompare').onclick;
+        document.getElementById('openCompare').onclick = () => {
+            if (document.getElementById('pageDispersion').style.display !== 'none') {
+                renderDCompareModal();
+                document.getElementById('dCompareModal').style.display = 'flex';
+            } else {
+                renderCompareModal();
+                document.getElementById('compareModal').classList.add('open');
+            }
+        };
+
+        document.getElementById('dCloseCompare').onclick = () => {
+            document.getElementById('dCompareModal').style.display = 'none';
+        };
+        document.getElementById('dClearCompare').onclick = () => {
+            dArchive = [];
+            renderDCompareModal();
+        };
+        document.getElementById('dCompareModal').onclick = (e) => {
+            if (e.target === document.getElementById('dCompareModal')) document.getElementById('dCompareModal').style.display = 'none';
+        };
+
+        function renderDCompareModal() {
+            const body = document.getElementById('dCompareBody');
+            if (dArchive.length === 0) {
+                body.innerHTML = `<div class="empty-state"><i class="fas fa-atom text-4xl text-slate-700 mb-4 block"></i><p class="text-slate-500 font-bold">Henüz dispersiyon setup'ı eklenmedi.</p><p class="text-slate-600 text-sm mt-1">"Hesapla" ardından "Karşılaştırmaya Ekle" butonuna basın.</p></div>`;
+                return;
+            }
+            const COLORS = ['#f97316','#3b82f6','#a855f7','#22c55e'];
+            const best = {
+                passes: Math.min(...dArchive.map(a=>a.passes)),
+                time: Math.min(...dArchive.map(a=>a.totalTime)),
+                em: Math.min(...dArchive.map(a=>a.emNeeded)),
+            };
+
+            let html = `<div class="mb-5 rounded-xl border border-slate-700/50 overflow-hidden" style="background:rgba(255,255,255,0.02)">
+            <table class="w-full text-xs">
+              <thead><tr class="border-b border-slate-800">
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Setup</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Makine</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Boncuk</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">d_b (mm)</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">v_t (m/s)</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">SI (Nm)</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Em (kWh/t)</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Pas</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Süre</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-bold uppercase text-[9px]">Hegman</th>
+              </tr></thead><tbody>`;
+
+            dArchive.forEach((a,i) => {
+                const col = COLORS[i%4];
+                html += `<tr class="border-b border-slate-800/50 hover:bg-slate-800/20">
+                  <td class="py-2 px-3"><span class="w-2 h-2 rounded-full inline-block mr-1" style="background:${col}"></span><span class="font-black mono text-slate-300">${a.label}</span></td>
+                  <td class="py-2 px-3 text-slate-400 text-[10px]">${a.millType}</td>
+                  <td class="py-2 px-3 text-slate-400 text-[10px]">${a.beadMat.split('(')[0]}</td>
+                  <td class="py-2 px-3 mono text-slate-300">${a.beadSize}</td>
+                  <td class="py-2 px-3 mono text-slate-300">${a.tipSpeed}</td>
+                  <td class="py-2 px-3 mono text-[10px]" style="color:${a.siColor}">${a.SI.toExponential(1)}</td>
+                  <td class="py-2 px-3 mono ${a.emNeeded===best.em?'text-green-400 font-bold':'text-slate-300'}">${a.emNeeded.toFixed(0)}</td>
+                  <td class="py-2 px-3 mono ${a.passes===best.passes?'text-green-400 font-bold':'text-orange-400'}">${a.passes}</td>
+                  <td class="py-2 px-3 mono ${a.totalTime===best.time?'text-green-400 font-bold':'text-slate-300'}">${a.totalTime<60?a.totalTime.toFixed(0)+'dk':(a.totalTime/60).toFixed(1)+'s'}</td>
+                  <td class="py-2 px-3 mono text-purple-400">H${a.hegmanResult.toFixed(1)}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            // Detay kartlar
+            html += `<div class="grid gap-4" style="grid-template-columns:repeat(${Math.min(dArchive.length,3)},1fr)">`;
+            dArchive.forEach((a,i) => {
+                const col = COLORS[i%4];
+                const maxPasses = Math.max(...dArchive.map(x=>x.passes), 1);
+                const passBar = Math.round((a.passes / maxPasses) * 100);
+                const isBest = a.passes === best.passes;
+                html += `<div class="compare-col" style="--col:${col}">
+                  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${col};border-radius:14px 14px 0 0"></div>
+                  <div class="flex justify-between items-start mb-4 mt-2">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="w-3 h-3 rounded-full" style="background:${col}"></span>
+                        <span class="font-black mono text-sm">${a.label}</span>
+                        ${isBest?'<span class="best-badge" style="background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.2)">EN AZ PAS</span>':''}
+                      </div>
+                      <div class="text-base font-black" style="color:${col}">${a.millType}</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-3xl font-black mono" style="color:${isBest?'#22c55e':col}">${a.passes}</div>
+                      <div class="text-[9px] text-slate-500 uppercase tracking-wider">pas sayısı</div>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Boncuk</div><div class="font-black mono text-slate-200">${a.beadMat.replace(/\(.*\)/,'').trim()}</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">d_b</div><div class="font-black mono text-slate-200">${a.beadSize} mm</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Uç Hızı</div><div class="font-black mono text-slate-200">${a.tipSpeed} m/s</div></div>
+                    <div class="bg-black/30 p-2 rounded-lg"><div class="text-[9px] text-slate-600 mono mb-0.5">Dolum</div><div class="font-black mono text-slate-200">%${a.beadFill}</div></div>
+                  </div>
+                  <div class="space-y-2 mb-4">
+                    <div><div class="flex justify-between mb-1"><span class="text-[9px] mono text-slate-500 uppercase">Pas Sayısı</span><span class="text-[10px] font-black mono" style="color:${col}">${a.passes}</span></div>
+                      <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${passBar}%;background:${isBest?'#22c55e':col}"></div></div></div>
+                    <div><div class="flex justify-between mb-1"><span class="text-[9px] mono text-slate-500 uppercase">Spesifik Enerji</span><span class="text-[10px] font-black mono text-slate-300">${a.emNeeded.toFixed(0)} kWh/t</span></div>
+                      <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${Math.round((a.emNeeded/Math.max(...dArchive.map(x=>x.emNeeded)))*100)}%;background:${col}"></div></div></div>
+                    <div><div class="flex justify-between mb-1"><span class="text-[9px] mono text-slate-500 uppercase">Güç</span><span class="text-[10px] font-black mono text-slate-300">${a.powerKW.toFixed(2)} kW</span></div>
+                      <div class="w-full h-1.5 bg-black/30 rounded-full"><div class="bar-compare rounded-full" style="width:${Math.round((a.powerKW/Math.max(...dArchive.map(x=>x.powerKW)))*100)}%;background:${col}"></div></div></div>
+                  </div>
+                  <div class="border-t border-white/05 pt-3">
+                    <div class="flex justify-between items-center">
+                      <div><div class="text-[9px] text-slate-500 mono uppercase">Toplam Süre</div>
+                        <div class="font-black mono text-lg ${a.totalTime===best.time?'text-green-400':'text-slate-300'}">${a.totalTime<60?a.totalTime.toFixed(0)+' dk':(a.totalTime/60).toFixed(1)+' saat'}</div></div>
+                      <div class="text-right"><div class="text-[9px] text-slate-500 mono uppercase">Hedef Hegman</div>
+                        <div class="font-black mono text-purple-400 text-lg">H${a.hegmanResult.toFixed(1)}</div></div>
+                    </div>
+                    <div class="mt-2 p-2 rounded-lg text-[10px] text-slate-400" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">
+                      <span class="text-[9px] font-black text-slate-500 uppercase mono">SI Durumu: </span>${a.siStatus}
+                    </div>
+                  </div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            if (dArchive.length > 1) {
+                const winner = dArchive.find(a => a.passes === best.passes);
+                const fastestTime = dArchive.find(a => a.totalTime === best.time);
+                const lowestEm = dArchive.find(a => a.emNeeded === best.em);
+                html += `<div class="mt-5 p-5 rounded-xl border border-green-500/20" style="background:rgba(34,197,94,0.04)">
+                  <h3 class="text-xs font-black mono text-green-400 uppercase mb-3 flex items-center gap-2"><i class="fas fa-award"></i>SONUÇ</h3>
+                  <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-black/30 p-3 rounded-lg text-center"><div class="text-[9px] text-slate-500 mono uppercase mb-1">En Az Pas</div><div class="font-black text-green-400">${winner?.label}</div><div class="text-xs text-slate-400">${winner?.passes} pas</div></div>
+                    <div class="bg-black/30 p-3 rounded-lg text-center"><div class="text-[9px] text-slate-500 mono uppercase mb-1">En Kısa Süre</div><div class="font-black text-blue-400">${fastestTime?.label}</div><div class="text-xs text-slate-400">${fastestTime?.totalTime.toFixed(0)} dk</div></div>
+                    <div class="bg-black/30 p-3 rounded-lg text-center"><div class="text-[9px] text-slate-500 mono uppercase mb-1">En Düşük Em</div><div class="font-black text-orange-400">${lowestEm?.label}</div><div class="text-xs text-slate-400">${lowestEm?.emNeeded.toFixed(0)} kWh/t</div></div>
+                  </div>
+                </div>`;
+            }
+            body.innerHTML = html;
+        }
+
     </script>
 </body>
 </html>
