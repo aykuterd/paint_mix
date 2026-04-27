@@ -2554,6 +2554,7 @@ function analyzeTank(tank, urun) {
     kriterler.push({ ad: 'Kapasite', deger: `${V_urun_L.toFixed(0)} L / ${kullanilabilir_L} L`, durum: kap_durum, mesaj: kap_mesaj });
 
     // Pervane tipi kategori belirle
+    const imp_tip = tank.imp_tip;
     const isHighShear = (imp_tip === 'cowles' || imp_tip === 'lenart_dishli' || imp_tip === 'lenart_dishsiz');
     const isAgitator  = (imp_tip === 'marine_propeller');
 
@@ -2786,7 +2787,21 @@ function buildYerFilters() {
 function runUygunlukAnalysis() {
     const urun = uygGetUrun();
     const allTanks = [...TANK_DB, ...extraTanks];
-    analysisResults = allTanks.map(tank => analyzeTank(tank, urun));
+    analysisResults = allTanks.map(tank => {
+        try {
+            return analyzeTank(tank, urun);
+        } catch(e) {
+            // Hatalı tank için varsayılan err sonucu döndür
+            return {
+                tank, urun, imp: IMP_SPECS.marine_propeller,
+                n_rpm: 0, Re_eff: 0, P_teorik: 0, P_gercek: 0,
+                v_tip: 0, PV: 0, Q_Ls: 0, circ_s: null, njs_rpm: null,
+                V_urun_L: 0, kapasite_pct: 0, motor_yeterli: false,
+                kriterler: [{ ad: 'Hata', deger: '-', durum: 'err', mesaj: `Hesap hatası: ${e.message}` }],
+                genel: 'err', errCount: 1, warCount: 0
+            };
+        }
+    });
     // Sırala: önce ok, sonra war, sonra err; sonra kapasite pct
     analysisResults.sort((a, b) => {
         const order = { ok: 0, war: 1, err: 2 };
@@ -2823,8 +2838,9 @@ document.querySelectorAll('#tankFilters .tank-filter-btn').forEach(btn => {
 document.getElementById('manuelEkleBtn').onclick = () => {
     const tip = document.getElementById('m_tip').value;
     const W = parseFloat(document.getElementById('m_D').value);
+    const kod = document.getElementById('m_kod').value || `ÖZEL-${extraTanks.length+1}`;
     const newTank = {
-        kod: document.getElementById('m_kod').value || `ÖZEL-${extraTanks.length+1}`,
+        kod,
         tip,
         H: parseFloat(document.getElementById('m_H').value),
         D: tip === 'silindirik' ? W : undefined,
@@ -2843,8 +2859,14 @@ document.getElementById('manuelEkleBtn').onclick = () => {
         min_lt: null,
     };
     extraTanks.push(newTank);
-    showToast(`"${newTank.kod}" eklendi`, '#22c55e');
-    runUygunlukAnalysis();
+    showToast(`"${kod}" eklendi — analiz başlatılıyor`, '#22c55e');
+    // Ürün bilgisi girilmişse hemen analiz et
+    const miktar = parseFloat(document.getElementById('urun_miktar').value);
+    if (miktar > 0) {
+        runUygunlukAnalysis();
+    } else {
+        showToast(`"${kod}" listeye eklendi. Ürün bilgilerini girerek "Tüm Tankları Analiz Et" butonuna basın.`, '#6366f1');
+    }
 };
 
 // Tab switching için ekleme
