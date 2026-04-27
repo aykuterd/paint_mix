@@ -250,10 +250,23 @@
         .page-tab:hover { background: rgba(255,255,255,0.05); color: #94a3b8; }
         .active-page-tab { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
         #tabDispersion.active-page-tab { background: rgba(168,85,247,0.15); color: #c084fc; border-color: rgba(168,85,247,0.25); }
+        #tabUygunluk.active-page-tab { background: rgba(34,197,94,0.15); color: #4ade80; border-color: rgba(34,197,94,0.25); }
 
-        /* Dispersion compare button */
-        #dCompareBtn { background: #7c3aed; }
-        #dCompareBtn:hover { background: #6d28d9; }
+        /* Uygunluk sayfası */
+        .uyg-card { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 20px; }
+        .tank-row { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.15s; }
+        .tank-row:hover { background: rgba(255,255,255,0.05); border-color: rgba(34,197,94,0.3); }
+        .tank-row.selected { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.4); }
+        .karar-ok  { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); border-radius: 12px; }
+        .karar-war { background: rgba(245,158,11,0.10); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; }
+        .karar-err { background: rgba(239,68,68,0.10); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; }
+        .kriter-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); gap: 12px; }
+        .kriter-row:last-child { border-bottom: none; }
+        .badge-ok  { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.2); padding: 2px 8px; border-radius: 99px; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; white-space: nowrap; }
+        .badge-war { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); padding: 2px 8px; border-radius: 99px; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; white-space: nowrap; }
+        .badge-err { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.2); padding: 2px 8px; border-radius: 99px; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; font-weight: 700; white-space: nowrap; }
+        .tank-filter-btn { background: rgba(255,255,255,0.04); color: #64748b; border: 1px solid rgba(255,255,255,0.06); padding: 4px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+        .tank-filter-btn.active { background: rgba(34,197,94,0.15); color: #4ade80; border-color: rgba(34,197,94,0.3); }
     </style>
 </head>
 <body class="p-4">
@@ -290,6 +303,9 @@
             </button>
             <button id="tabDispersion" class="page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
                 <i class="fas fa-atom text-xs"></i> Dispersiyon / Boncuklu Değirmen
+            </button>
+            <button id="tabUygunluk" class="page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
+                <i class="fas fa-flask-vial text-xs"></i> Tank Uygunluk Analizi
             </button>
         </div>
     </nav>
@@ -1063,6 +1079,243 @@
 
     </div> <!-- end max-w container -->
     </div> <!-- end #pageDispersion -->
+
+    <!-- PAGE: Tank Uygunluk Analizi -->
+    <div id="pageUygunluk" style="display:none">
+    <div class="max-w-[1600px] mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Sol: Ürün Bilgileri -->
+        <div class="lg:col-span-3 space-y-4">
+          <div class="uyg-card">
+            <div class="flex items-center gap-2 mb-4" style="color:#4ade80">
+              <i class="fas fa-flask text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Ürün Bilgileri</h2>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Ürün / Formül Adı</label>
+                <input type="text" id="urun_adi" placeholder="örn: Beyaz İç Cephe Boyası" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Sipariş / Üretim Miktarı (kg)</label>
+                <input type="number" id="urun_miktar" value="2000" step="100" class="input-dark">
+                <p class="text-[9px] text-slate-300 mt-1">Tankın kullanılabilir kapasitesiyle karşılaştırılır</p>
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Yoğunluk (kg/m³)</label>
+                <input type="number" id="urun_yogunluk" value="1300" step="10" class="input-dark">
+                <p class="text-[9px] text-slate-300 mt-1">Kg/L cinsinden biliyorsanız ×1000 çarpın</p>
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Viskozite (mPa·s = cP)</label>
+                <input type="number" id="urun_viskozite" value="5000" step="100" class="input-dark">
+                <p class="text-[9px] text-slate-300 mt-1">Krebs (KU) → cP yaklaşık: 100KU≈1000cP · Stormer ile ölçün</p>
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Boya Tipi (Reoloji)</label>
+                <select id="urun_tip" class="input-dark">
+                  <option value="su_bazli">Su Bazlı (n≈0.60) — Emülsiyon, akrilik</option>
+                  <option value="solvent_bazli">Solvent Bazlı (n≈0.70) — Alkid, epoksi</option>
+                  <option value="yuksek_visc">Yüksek Viskoziteli (n≈0.45) — Macun, dolgu</option>
+                  <option value="dispersiyon">Dispersiyon Pastası (n≈0.35) — Pigment pastası</option>
+                </select>
+                <p class="text-[9px] text-slate-300 mt-1">Metzner-Otto Re hesabı için akış davranış endeksi (n)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pigment Bilgileri -->
+          <div class="uyg-card">
+            <div class="flex items-center justify-between mb-1" style="color:#a78bfa">
+              <div class="flex items-center gap-2">
+                <i class="fas fa-circle-nodes text-sm"></i>
+                <h2 class="font-black uppercase text-xs tracking-widest">Pigment Süspansiyon Analizi</h2>
+              </div>
+              <span class="tag lit-info">Zwietering 1958</span>
+            </div>
+            <p class="text-[9px] text-slate-300 leading-relaxed mb-4 mt-2">Bu bölüm, pigmentin tank dibine çökmeyi durdurup askıda kalması için gereken minimum karıştırıcı hızını (Njs) hesaplar. Njs altında çalışılırsa alttan, ortadan ve üstten alınan numuneler <span class="text-purple-300 font-bold">farklı renk ve yoğunluk</span> verir.</p>
+
+            <div class="space-y-4">
+
+              <!-- d_p -->
+              <div class="p-3 rounded-xl border" style="background:rgba(167,139,250,0.05);border-color:rgba(167,139,250,0.2)">
+                <label class="text-[9px] font-black uppercase tracking-wider block mb-1" style="color:#a78bfa">
+                  Ortalama Tane Boyutu — d_p (µm)
+                </label>
+                <input type="number" id="u_pigDp" value="10" step="1" class="input-dark mb-2">
+                <div class="text-[9px] text-slate-300 leading-relaxed space-y-1">
+                  <p>Dispersiyon sonrası boyada kalan pigment partikülünün ortalama çapı. <span class="text-purple-300 font-bold">Grindometre (Hegman) okumanızdan doğrudan alın:</span></p>
+                  <div class="grid grid-cols-2 gap-1 mt-1.5">
+                    <div class="bg-black/30 p-1.5 rounded text-center"><div class="text-purple-300 font-bold mono">Hegman 5</div><div class="text-slate-400">≈ 40 µm</div></div>
+                    <div class="bg-black/30 p-1.5 rounded text-center"><div class="text-purple-300 font-bold mono">Hegman 6</div><div class="text-slate-400">≈ 25 µm</div></div>
+                    <div class="bg-black/30 p-1.5 rounded text-center"><div class="text-purple-300 font-bold mono">Hegman 7</div><div class="text-slate-400">≈ 12.5 µm</div></div>
+                    <div class="bg-black/30 p-1.5 rounded text-center"><div class="text-purple-300 font-bold mono">Hegman 7.5</div><div class="text-slate-400">≈ 6 µm</div></div>
+                  </div>
+                  <p class="mt-1.5 text-slate-400">Dispersiyon yapılmamışsa hammadde tane boyutunu girin. TiO₂ ham toz ≈ 0.3 µm, CaCO₃ öğütülmüş ≈ 5–20 µm.</p>
+                </div>
+              </div>
+
+              <!-- ρ pigment -->
+              <div class="p-3 rounded-xl border" style="background:rgba(167,139,250,0.05);border-color:rgba(167,139,250,0.2)">
+                <label class="text-[9px] font-black uppercase tracking-wider block mb-1" style="color:#a78bfa">
+                  Pigment Ortalama Spesifik Yoğunluğu — ρ (kg/m³)
+                </label>
+                <input type="number" id="u_pigRho" value="4200" step="100" class="input-dark mb-2">
+                <div class="text-[9px] text-slate-300 leading-relaxed">
+                  <p class="mb-2">Pigment veya dolgu maddesinin <span class="text-purple-300 font-bold">kendi malzeme yoğunluğu</span> — pastaninki değil. Formülün katı partiküllerin ne kadar ağır olduğunu hesaplamak için kullandığı değer. Daha ağır pigment → daha yüksek Njs gerekir.</p>
+                  <div class="grid grid-cols-2 gap-1">
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">TiO₂ (Rutil)</span><span class="text-slate-400 float-right mono">4200</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">Fe₂O₃ (Sarı/Kırmızı)</span><span class="text-slate-400 float-right mono">4800</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">BaSO₄</span><span class="text-slate-400 float-right mono">4400</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">CaCO₃ (Kalsit)</span><span class="text-slate-400 float-right mono">2700</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">Talk</span><span class="text-slate-400 float-right mono">2800</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">Karbon Siyahı</span><span class="text-slate-400 float-right mono">1800</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">Ftalosiyanin</span><span class="text-slate-400 float-right mono">1600</span></div>
+                    <div class="bg-black/30 p-1.5 rounded"><span class="text-purple-300 font-bold">Organik (genel)</span><span class="text-slate-400 float-right mono">1500–2000</span></div>
+                  </div>
+                  <p class="mt-2 text-slate-400">Birden fazla ağır pigment varsa ağırlıkça ortalamasını alın. Örnek: %15 TiO₂ + %10 CaCO₃ → ρ_ort = (15×4200 + 10×2700) / 25 = <span class="mono text-purple-300">3600</span></p>
+                </div>
+              </div>
+
+              <!-- wt% -->
+              <div class="p-3 rounded-xl border" style="background:rgba(167,139,250,0.05);border-color:rgba(167,139,250,0.2)">
+                <label class="text-[9px] font-black uppercase tracking-wider block mb-1" style="color:#a78bfa">
+                  Ağırlıkça Toz Pigment Yüzdesi — wt%
+                </label>
+                <input type="number" id="u_pigX" value="20" step="1" min="1" max="80" class="input-dark mb-2">
+                <div class="text-[9px] text-slate-300 leading-relaxed space-y-2">
+                  <p>Formülünüzdeki <span class="text-purple-300 font-bold">dibe çökme riski taşıyan tüm katı hammaddelerin toplam ağırlıkça yüzdesi.</span> Organik pigmentler çok hafif olduğundan genellikle eklenmez.</p>
+                  <div class="bg-black/30 p-2 rounded-lg">
+                    <p class="text-slate-400 mb-1">Örnek formül (100 kg boya):</p>
+                    <div class="space-y-0.5 mono text-[9px]">
+                      <div class="flex justify-between"><span class="text-slate-300">TiO₂</span><span class="text-purple-300">+ 15 kg → ekle</span></div>
+                      <div class="flex justify-between"><span class="text-slate-300">CaCO₃</span><span class="text-purple-300">+ 12 kg → ekle</span></div>
+                      <div class="flex justify-between"><span class="text-slate-300">Talk</span><span class="text-purple-300">+ 8 kg → ekle</span></div>
+                      <div class="flex justify-between"><span class="text-slate-300">Ftalo Mavisi</span><span class="text-slate-500">+ 2 kg → atla (hafif)</span></div>
+                      <div class="flex justify-between border-t border-white/10 pt-1 mt-1"><span class="text-white font-bold">Toplam</span><span class="text-purple-300 font-bold">= 35 → buraya 35 yaz</span></div>
+                    </div>
+                  </div>
+                  <p class="text-slate-400">Su bazlı dış cephe: genellikle %25–40 · Solvent bazlı: %15–30 · Pigment pastası: %40–70</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <button id="uygAnalyzBtn" class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest text-white transition flex items-center justify-center gap-2 shadow-xl"
+            style="background:linear-gradient(135deg,#059669,#10b981)">
+            <i class="fas fa-magnifying-glass-chart"></i> Tüm Tankları Analiz Et
+          </button>
+        </div>
+
+        <!-- Orta: Tank Listesi -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="uyg-card">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2" style="color:#4ade80">
+                <i class="fas fa-list-check text-sm"></i>
+                <h2 class="font-black uppercase text-xs tracking-widest">Tank Listesi</h2>
+              </div>
+              <div class="flex gap-1 flex-wrap" id="tankFilters">
+                <button class="tank-filter-btn active" data-filter="all">Tümü</button>
+                <button class="tank-filter-btn" data-filter="ok">✅ Uygun</button>
+                <button class="tank-filter-btn" data-filter="war">⚠ Şartlı</button>
+                <button class="tank-filter-btn" data-filter="err">❌ Uygun Değil</button>
+              </div>
+            </div>
+            <!-- Yer filtresi -->
+            <div class="flex gap-1 flex-wrap mb-3" id="yerFilters">
+              <button class="tank-filter-btn active" data-yer="all">Tüm Yerler</button>
+            </div>
+            <div id="tankListesi" class="space-y-2" style="max-height:520px;overflow-y:auto;padding-right:4px">
+              <div class="empty-state text-center py-12 text-slate-600">
+                <i class="fas fa-magnifying-glass-chart text-3xl mb-3 block"></i>
+                <p>Ürün bilgilerini girin ve "Tüm Tankları Analiz Et" butonuna basın.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manuel Tank Ekle -->
+          <div class="uyg-card">
+            <div class="flex items-center gap-2 mb-4 text-slate-400">
+              <i class="fas fa-plus-circle text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Manuel Tank Ekle</h2>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Tank Kodu</label>
+                <input type="text" id="m_kod" placeholder="ÖZEL-001" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Tank Tipi</label>
+                <select id="m_tip" class="input-dark">
+                  <option value="silindirik">Silindirik</option>
+                  <option value="kare">Kare/Dikdörtgen</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Yükseklik H (m)</label>
+                <input type="number" id="m_H" value="2.0" step="0.1" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Çap D / Kenar (m)</label>
+                <input type="number" id="m_D" value="1.5" step="0.1" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Kullanılabilir Hacim (L)</label>
+                <input type="number" id="m_hacim" value="3000" step="100" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">RPM</label>
+                <input type="number" id="m_rpm" value="200" step="10" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pervane Çapı d (m)</label>
+                <input type="number" id="m_dimp" value="0.5" step="0.05" class="input-dark">
+              </div>
+              <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Motor (kW)</label>
+                <input type="number" id="m_kw" value="7.5" step="0.5" class="input-dark">
+              </div>
+              <div class="col-span-2">
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pervane Tipi</label>
+                <select id="m_imp" class="input-dark">
+                  <option value="marine_propeller">Gemici Pervane (Marine Propeller)</option>
+                  <option value="lenart_dishli">Lenart Diski (Dişli)</option>
+                  <option value="lenart_dishsiz">Lenart Diski (Dişsiz)</option>
+                  <option value="cowles">Cowles Diski</option>
+                </select>
+              </div>
+              <div class="col-span-2">
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Yer / Bina</label>
+                <input type="text" id="m_yer" placeholder="örn: ÜRETİM3" class="input-dark">
+              </div>
+            </div>
+            <button id="manuelEkleBtn" class="w-full mt-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest text-white transition flex items-center justify-center gap-2"
+              style="background:#334155">
+              <i class="fas fa-plus"></i> Listeye Ekle ve Analiz Et
+            </button>
+          </div>
+        </div>
+
+        <!-- Sağ: Seçili Tank Detay -->
+        <div class="lg:col-span-4">
+          <div class="uyg-card sticky top-4" id="tankDetayPanel">
+            <div class="flex items-center gap-2 mb-4 text-slate-400">
+              <i class="fas fa-chart-bar text-sm"></i>
+              <h2 class="font-black uppercase text-xs tracking-widest">Seçili Tank Detayı</h2>
+            </div>
+            <div id="tankDetayIcerigi" class="empty-state text-center py-16 text-slate-600">
+              <i class="fas fa-arrow-left text-2xl mb-3 block"></i>
+              <p class="text-sm">Listeden bir tank seçin</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div> <!-- end #pageUygunluk -->
 
     <!-- Compare Modal (Mixing) -->
     <div id="compareModal">
@@ -2164,7 +2417,447 @@
                 renderHelp(this.dataset.tab);
             };
         });
-        // ============ PAGE TAB SWITCHING ============
+        // ============ UYGUNLUK ANALİZİ ============
+// ============ TANK UYGUNLUK ANALİZİ ============
+
+// Tüm tank verisi (Excel'den parse edildi)
+const TANK_DB = [{"kod": "KT-001", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-002", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-003", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-004", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-005", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-006", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 710.0, "rpm_max": 710.0, "kw": 5.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-007", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-008", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-009", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-010", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-011", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-012", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-013", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-014", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-015", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-016", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-017", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-018", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-019", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-020", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-021", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-022", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-023", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-024", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 2000.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishsiz", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-027", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.3, "rpm_min": 152.0, "rpm_max": 152.0, "kw": 5.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-028", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.3, "rpm_min": 152.0, "rpm_max": 152.0, "kw": 5.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-029", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.3, "rpm_min": 150.0, "rpm_max": 150.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-030", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.3, "rpm_min": 150.0, "rpm_max": 150.0, "kw": 4.0, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-031", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-032", "tip": "silindirik", "H": 2.27, "D": 1.3, "hacim_lt": 3100.0, "kullanilabilir_lt": 2500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 6.6, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-033", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 1900.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 720.0, "rpm_max": 720.0, "kw": 4.8, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-034", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 1900.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 720.0, "rpm_max": 720.0, "kw": 4.8, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-035", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 1900.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 720.0, "rpm_max": 720.0, "kw": 4.8, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-036", "tip": "silindirik", "H": 1.75, "D": 1.2, "hacim_lt": 1900.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "lenart_dishli", "d_imp": 0.3, "rpm_min": 720.0, "rpm_max": 720.0, "kw": 4.8, "malzeme": "Karbon çeliği", "yer": "ÜRETİM1\n16", "urun_tipi": ""}, {"kod": "KT-037", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-038", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-039", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-040", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-041", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-042", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-044", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-045", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-046", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-047", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-048", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-049", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-050", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-051", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-052", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-053", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-054", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-055", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-056", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-057", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-058", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "Karbon çeliği", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-059", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-060", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-061", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 183.0, "rpm_max": 183.0, "kw": 9.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-062", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-063", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-064", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-065", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-066", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-067", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-068", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-069", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-070", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-071", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-072", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-073", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-074", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-075", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-076", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-077", "tip": "kare", "H": 1.6, "W": 1.25, "L": 1.25, "hacim_lt": 2500.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-078", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-079", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-080", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-081", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-082", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-083", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-084", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-085", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-086", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-087", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-088", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-089", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-090", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-091", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-092", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-093", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-094", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-095", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-096", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-097", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-098", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-099", "tip": "kare", "H": 1.25, "W": 1.0, "L": 1.0, "hacim_lt": 1250.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 274.0, "rpm_max": 274.0, "kw": 2.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-100", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-101", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-102", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-103", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-104", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-105", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-106", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-107", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-108", "tip": "kare", "H": 1.4, "W": 1.1, "L": 1.1, "hacim_lt": 1700.0, "kullanilabilir_lt": 1500.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.5, "rpm_min": 277.0, "rpm_max": 277.0, "kw": 3.6, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-112", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 184.0, "rpm_max": 184.0, "kw": 9.2, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-113", "tip": "kare", "H": 2.5, "W": 2.0, "L": 2.0, "hacim_lt": 10000.0, "kullanilabilir_lt": 8000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 184.0, "rpm_max": 184.0, "kw": 9.2, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-114", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-115", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-116", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-117", "tip": "kare", "H": 2.0, "W": 1.6, "L": 1.6, "hacim_lt": 5000.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.65, "rpm_min": 237.0, "rpm_max": 237.0, "kw": 7.5, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-118", "tip": "kare", "H": 4.5, "W": 2.4, "L": 2.4, "hacim_lt": 26000.0, "kullanilabilir_lt": 21000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.45, "rpm_min": 725.0, "rpm_max": 725.0, "kw": 13.2, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-119", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "AISI 304", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-120", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "AISI 304", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-121", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "Karbon çeliği", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-122", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-123", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "AISI 304", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-124", "tip": "kare", "H": 3.85, "W": 2.0, "L": 2.0, "hacim_lt": 15000.0, "kullanilabilir_lt": 12000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 186.0, "rpm_max": 186.0, "kw": 13.2, "malzeme": "AISI 304", "yer": "AHŞAP\n56", "urun_tipi": ""}, {"kod": "KT-125", "tip": "silindirik", "H": 2.16, "D": 1.2, "hacim_lt": 2200.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "AISI 304", "yer": "ÇÖZELTİ\n73", "urun_tipi": "çözelti"}, {"kod": "KT-126", "tip": "silindirik", "H": 2.16, "D": 1.2, "hacim_lt": 2200.0, "kullanilabilir_lt": 2000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.3, "rpm_min": 715.0, "rpm_max": 715.0, "kw": 4.0, "malzeme": "AISI 304", "yer": "ÇÖZELTİ\n73", "urun_tipi": "çözelti"}, {"kod": "KT-127", "tip": "silindirik", "H": 3.03, "D": 2.09, "hacim_lt": 9880.0, "kullanilabilir_lt": 8960.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 244.0, "rpm_max": 244.0, "kw": 13.5, "malzeme": "AISI 305", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-128", "tip": "silindirik", "H": 3.03, "D": 2.09, "hacim_lt": 9880.0, "kullanilabilir_lt": 8960.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 244.0, "rpm_max": 244.0, "kw": 13.5, "malzeme": "AISI 305", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-129", "tip": "silindirik", "H": 2.36, "D": 1.7, "hacim_lt": 4800.0, "kullanilabilir_lt": 4000.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": null, "rpm_max": null, "kw": 11.0, "malzeme": "AISI 304", "yer": "Su Bazlı\n70", "urun_tipi": "sulu"}, {"kod": "KT-130", "tip": "silindirik", "H": 2.052, "D": 1.51, "hacim_lt": 3600.0, "kullanilabilir_lt": 3240.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-131", "tip": "silindirik", "H": 2.052, "D": 1.51, "hacim_lt": 3600.0, "kullanilabilir_lt": 3240.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-132", "tip": "silindirik", "H": 2.052, "D": 1.51, "hacim_lt": 3600.0, "kullanilabilir_lt": 3240.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-133", "tip": "silindirik", "H": 2.052, "D": 1.51, "hacim_lt": 3600.0, "kullanilabilir_lt": 3240.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-134", "tip": "silindirik", "H": 2.052, "D": 1.51, "hacim_lt": 3600.0, "kullanilabilir_lt": 3240.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-135", "tip": "silindirik", "H": 2.2, "D": 1.524, "hacim_lt": 3460.0, "kullanilabilir_lt": 3000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.4, "rpm_min": 0.0, "rpm_max": 1180.0, "kw": 24.0, "malzeme": "AISI 304", "yer": "WBC\n87", "urun_tipi": "sulu"}, {"kod": "KT-136", "tip": "silindirik", "H": 2.2, "D": 1.524, "hacim_lt": 3460.0, "kullanilabilir_lt": 3000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.4, "rpm_min": 0.0, "rpm_max": 1180.0, "kw": 24.0, "malzeme": "AISI 304", "yer": "WBC\n87", "urun_tipi": "sulu"}, {"kod": "KT-137", "tip": "silindirik", "H": 3.03, "D": 2.09, "hacim_lt": 9880.0, "kullanilabilir_lt": 8960.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 244.0, "rpm_max": 244.0, "kw": 13.5, "malzeme": "AISI 305", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-138", "tip": "silindirik", "H": 3.03, "D": 2.09, "hacim_lt": 9880.0, "kullanilabilir_lt": 8960.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.8, "rpm_min": 244.0, "rpm_max": 244.0, "kw": 13.5, "malzeme": "AISI 305", "yer": "ÜRETİM2\n17", "urun_tipi": ""}, {"kod": "KT-139", "tip": "silindirik", "H": 1.662, "D": 1.054, "hacim_lt": 1272.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.3, "rpm_min": 0.0, "rpm_max": 1170.0, "kw": 11.0, "malzeme": "AISI 304", "yer": "WBC\n87", "urun_tipi": "sulu"}, {"kod": "KT-140", "tip": "silindirik", "H": 1.662, "D": 1.054, "hacim_lt": 1272.0, "kullanilabilir_lt": 1000.0, "min_lt": null, "imp_tip": "cowles", "d_imp": 0.3, "rpm_min": 0.0, "rpm_max": 1170.0, "kw": 11.0, "malzeme": "AISI 304", "yer": "WBC\n87", "urun_tipi": "sulu"}, {"kod": "KT-141", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-142", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-143", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-144", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-145", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-146", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-147", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-148", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-149", "tip": "silindirik", "H": 1.23, "D": 0.995, "hacim_lt": 910.0, "kullanilabilir_lt": 750.0, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.42, "rpm_min": 271.0, "rpm_max": 1410.0, "kw": 2.6, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-150", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-151", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-152", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-153", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-154", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT-155", "tip": "silindirik", "H": 1.65, "D": 1.294, "hacim_lt": 2200.0, "kullanilabilir_lt": 1.8, "min_lt": null, "imp_tip": "marine_propeller", "d_imp": 0.52, "rpm_min": 276.0, "rpm_max": 1430.0, "kw": 5.0, "malzeme": "AISI 304", "yer": "ÜRETİM1\n16", "urun_tipi": "renk bileşeni"}, {"kod": "KT 159", "tip": "silindirik", "H": 2.1, "D": 1.6, "hacim_lt": 4625.0, "kullanilabilir_lt": 3700.0, "min_lt": 972.0, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": "renk bileşeni"}, {"kod": "KT 160", "tip": "silindirik", "H": 2.1, "D": 1.6, "hacim_lt": 4625.0, "kullanilabilir_lt": 3700.0, "min_lt": 972.0, "imp_tip": "marine_propeller", "d_imp": 0.6, "rpm_min": 240.0, "rpm_max": 240.0, "kw": 7.5, "malzeme": "AISI 304", "yer": "ÜRETİM2\n17", "urun_tipi": "renk bileşeni"}];
+
+let extraTanks = []; // Manuel eklenenler
+let analysisResults = []; // Son analiz sonuçları
+let selectedFilter = 'all';
+let selectedYer = 'all';
+
+// Pervane özellikleri
+const IMP_SPECS = {
+    marine_propeller: { np: 0.35, nq: 0.50, ks: 10.5, njsS: 4.0, name: 'Gemici Pervane' },
+    lenart_dishli:    { np: 0.55, nq: 0.40, ks: 10.0, njsS: 5.0, name: 'Lenart (Dişli)' },
+    lenart_dishsiz:   { np: 0.45, nq: 0.35, ks: 10.0, njsS: 5.0, name: 'Lenart (Dişsiz)' },
+    cowles:           { np: 0.45, nq: 0.15, ks: 11.0, njsS: 6.0, name: 'Cowles Diski' },
+};
+
+// Boya tipi -> n değeri (Güç Yasası akış endeksi)
+const REOLOJI_N = {
+    su_bazli: 0.60, solvent_bazli: 0.70,
+    yuksek_visc: 0.45, dispersiyon: 0.35
+};
+
+function uygGetUrun() {
+    return {
+        adi: document.getElementById('urun_adi').value || 'İsimsiz Ürün',
+        miktar_kg: parseFloat(document.getElementById('urun_miktar').value) || 2000,
+        yogunluk: parseFloat(document.getElementById('urun_yogunluk').value) || 1300,
+        viskozite_cP: parseFloat(document.getElementById('urun_viskozite').value) || 5000,
+        tip: document.getElementById('urun_tip').value,
+        pigDp: parseFloat(document.getElementById('u_pigDp').value) * 1e-6,
+        pigRho: parseFloat(document.getElementById('u_pigRho').value),
+        pigX: parseFloat(document.getElementById('u_pigX').value),
+    };
+}
+
+function analyzeTank(tank, urun) {
+    const imp = IMP_SPECS[tank.imp_tip] || IMP_SPECS.marine_propeller;
+    const n_rpm = tank.rpm_max || tank.rpm_min || 0;
+    const N = n_rpm / 60; // rps
+    const D = tank.d_imp;
+    const rho = urun.yogunluk;
+    const mu_Pa = urun.viskozite_cP / 1000; // Pa·s
+    const n_flow = REOLOJI_N[urun.tip]; // akış davranış endeksi
+    const kw = tank.kw || 0;
+
+    // Tank geometrisi
+    let T_eff, H_eff, V_tank_m3;
+    if (tank.tip === 'silindirik') {
+        T_eff = tank.D || 1.0;
+        H_eff = tank.H || 2.0;
+        V_tank_m3 = Math.PI / 4 * T_eff * T_eff * H_eff;
+    } else {
+        // Kare: eşdeğer çap = √(W*L) veya W (W≈L varsayımı)
+        const W = tank.W || tank.D || 1.6;
+        const L = tank.L || W;
+        H_eff = tank.H || 2.0;
+        T_eff = Math.sqrt(W * L); // eşdeğer çap
+        V_tank_m3 = W * L * H_eff;
+    }
+
+    // Ürün hacmi
+    const V_urun_m3 = urun.miktar_kg / rho;
+    const V_urun_L = V_urun_m3 * 1000;
+    const kullanilabilir_L = tank.kullanilabilir_lt || 0;
+    const kapasite_pct = kullanilabilir_L > 0 ? (V_urun_L / kullanilabilir_L) * 100 : 0;
+
+    // Metzner-Otto: efektif kayma oranı γ_av = ks × N
+    const gamma_av = imp.ks * N;
+    // Güç Yasası efektif viskozite: μ_eff = (μ_app) = K × γ^(n-1)
+    // K'yı tek nokta viskoziteden türet: μ_cP = K × (ks×N_ref)^(n-1)
+    // N_ref için orta nokta RPM kullan
+    const N_ref = Math.max(N, 1); // 0 bölme önlemi
+    const K_konst = mu_Pa / Math.pow(imp.ks * N_ref, n_flow - 1);
+    const mu_eff = K_konst * Math.pow(gamma_av, n_flow - 1); // Pa·s
+
+    // Efektif Reynolds (Metzner-Otto)
+    const Re_eff = N > 0 ? (rho * N * D * D) / mu_eff : 0;
+
+    // Teorik güç (türbülanslı Np ile)
+    const P_teorik = imp.np * rho * Math.pow(N, 3) * Math.pow(D, 5);
+    const P_motor = kw * 1000; // W
+    const P_gercek = Math.min(P_teorik, P_motor > 0 ? P_motor : Infinity);
+    const motor_yeterli = P_motor > 0 ? P_teorik <= P_motor * 1.1 : true;
+
+    // Uç hızı
+    const v_tip = Math.PI * D * N;
+
+    // P/V
+    const V_liq = V_urun_m3;
+    const PV = V_liq > 0 ? P_gercek / V_liq : 0;
+
+    // Sirkülasyon süresi
+    const Q = imp.nq * N * Math.pow(D, 3);
+    const circ_s = Q > 0 ? V_liq / Q : null;
+
+    // Zwietering Njs
+    const Drho = urun.pigRho - rho;
+    const nu = mu_Pa / rho;
+    let njs_rpm = null;
+    if (Drho > 0 && urun.pigDp > 0 && urun.pigX > 0) {
+        const njs = imp.njsS
+            * Math.pow(nu, 0.1)
+            * Math.pow(urun.pigDp, 0.2)
+            * Math.pow(9.81, 0.45)
+            * Math.pow(Drho / rho, 0.45)
+            * Math.pow(urun.pigX, 0.13)
+            / Math.pow(D, 0.85);
+        njs_rpm = njs * 60;
+    }
+
+    // ============ KARAR KRİTERLERİ ============
+    const kriterler = [];
+
+    // 1. Kapasite
+    let kap_durum, kap_mesaj;
+    if (V_urun_L > kullanilabilir_L * 1.05) {
+        kap_durum = 'err';
+        kap_mesaj = `${V_urun_L.toFixed(0)} L > ${kullanilabilir_L} L kapasite — TAŞAR`;
+    } else if (kapasite_pct > 90) {
+        kap_durum = 'war';
+        kap_mesaj = `%${kapasite_pct.toFixed(0)} dolu — çok yüksek, güvenlik payı az`;
+    } else if (tank.min_lt && V_urun_L < tank.min_lt) {
+        kap_durum = 'war';
+        kap_mesaj = `${V_urun_L.toFixed(0)} L < min ${tank.min_lt} L — pervane boşta kalabilir`;
+    } else if (kapasite_pct < 30) {
+        kap_durum = 'war';
+        kap_mesaj = `%${kapasite_pct.toFixed(0)} dolu — çok az doluluk, pervane verimli çalışmayabilir. Daha küçük tank önerilir.`;
+    } else {
+        kap_durum = 'ok';
+        kap_mesaj = `%${kapasite_pct.toFixed(0)} kullanım — uygun`;
+    }
+    kriterler.push({ ad: 'Kapasite', deger: `${V_urun_L.toFixed(0)} L / ${kullanilabilir_L} L`, durum: kap_durum, mesaj: kap_mesaj });
+
+    // Pervane tipi kategori belirle
+    const isHighShear = (imp_tip === 'cowles' || imp_tip === 'lenart_dishli' || imp_tip === 'lenart_dishsiz');
+    const isAgitator  = (imp_tip === 'marine_propeller');
+
+    // 2. Efektif Reynolds (Metzner-Otto)
+    // Literatür: Oğla & Gürcay / Kansai Altan (2022, Chem.Eng.Res.Des.) —
+    //   Dispersiyon için DÜŞÜK Re istenir: pigment kümeleri laminar tabakalar arasında ezilir.
+    //   Karıştırıcı (agitator) için boya >50 Re_eff yeterlidir (non-Newtonyen akışkan).
+    let re_durum, re_mesaj;
+    if (isHighShear) {
+        // Cowles / Lenart: dispersiyon amaçlı, düşük-orta Re beklenir ve istenir
+        if (Re_eff > 500)     { re_durum = 'war'; re_mesaj = 'Dispersiyon için Re yüksek — türbülans pigment ezmeyi olumsuz etkileyebilir (Oğla & Gürcay 2022)'; }
+        else if (Re_eff > 10) { re_durum = 'ok';  re_mesaj = 'Dispersiyon için uygun Re aralığı — laminar/geçiş rejimi pigment ezme verimli (Oğla & Gürcay 2022)'; }
+        else                  { re_durum = 'war'; re_mesaj = 'Re çok düşük — viskozite çok yüksek, ürün blade\'e ulaşamayabilir'; }
+    } else {
+        // Marine propeller / genel karıştırıcı
+        if (Re_eff > 200)     { re_durum = 'ok';  re_mesaj = 'Geçiş/Türbülanslı — boya homojenizasyonu için yeterli'; }
+        else if (Re_eff > 50) { re_durum = 'war'; re_mesaj = 'Geçiş/Lamineer sınırı — karışma zayıf kalabilir, süre uzar'; }
+        else if (Re_eff > 10) { re_durum = 'war'; re_mesaj = 'Lamineer — viskozite yüksek, homojenlik güç olabilir'; }
+        else                  { re_durum = 'err'; re_mesaj = 'Tam Lamineer — bu viskozitede homojen karışma çok zor'; }
+    }
+    kriterler.push({ ad: 'Efektif Reynolds (Metzner-Otto)', deger: Math.round(Re_eff).toLocaleString('tr-TR'), durum: re_durum, mesaj: re_mesaj, kaynak: 'Metzner & Otto (1957); Oğla & Gürcay, Kansai Altan (2022)' });
+
+    // 3. Motor Gücü
+    let mot_durum, mot_mesaj;
+    if (!motor_yeterli) {
+        mot_durum = 'err';
+        const n_max_rpm = kw > 0 ? Math.pow(P_motor/(imp.np*rho*Math.pow(D,5)),1/3)*60 : 0;
+        mot_mesaj = `Motor yetersiz! P_teorik=${P_teorik.toFixed(0)}W > motor ${P_motor.toFixed(0)}W. Max RPM: ${n_max_rpm.toFixed(0)}`;
+    } else if (P_motor > 0 && P_teorik > P_motor * 0.8) {
+        mot_durum = 'war';
+        mot_mesaj = `Motor kapasitesinin %${(P_teorik/P_motor*100).toFixed(0)}'inde çalışıyor`;
+    } else {
+        mot_durum = 'ok';
+        mot_mesaj = `${P_gercek.toFixed(0)} W — motor yeterli`;
+    }
+    kriterler.push({ ad: 'Motor Gücü', deger: `${(P_teorik/1000).toFixed(2)} kW`, durum: mot_durum, mesaj: mot_mesaj });
+
+    // 4. Uç Hızı — pervane tipine göre literatür değerleri
+    // Cowles/Sawtooth: 4000–6000 ft/dk = 20–30 m/s (DisperseTech; Polymer Innovation Blog 2024)
+    //   1800–6000 ft/dk = 9–30 m/s genel aralık
+    // Lenart (tırtıklı disk): benzer sawtooth karakteri, Kansai Altan uygulaması 11 m/s tipik
+    // Marine propeller (agitator): 1–6 m/s homojenizasyon için (Paul et al. 2004)
+    let tip_durum, tip_mesaj, tip_kaynak;
+    if (imp_tip === 'lenart_dishli' || imp_tip === 'lenart_dishsiz') {
+        tip_kaynak = 'Oğla & Gürcay, Kansai Altan (2022); DisperseTech';
+        if (v_tip < 5)        { tip_durum = 'war'; tip_mesaj = `Lenart için düşük (${v_tip.toFixed(1)} m/s) — tipik çalışma 9–25 m/s`; }
+        else if (v_tip <= 25) { tip_durum = 'ok';  tip_mesaj = `Lenart için uygun aralık (9–25 m/s) — ${v_tip.toFixed(1)} m/s`; }
+        else                  { tip_durum = 'war'; tip_mesaj = 'Çok yüksek — aşırı kesme, ısınma ve köpük riski'; }
+    } else if (imp_tip === 'cowles') {
+        tip_kaynak = 'DisperseTech; Polymer Innovation Blog (2024) — 1800–6000 ft/dk = 9–30 m/s';
+        if (v_tip < 9)        { tip_durum = 'war'; tip_mesaj = `Cowles için düşük (${v_tip.toFixed(1)} m/s) — dispersiyon için 9–30 m/s önerilir`; }
+        else if (v_tip <= 30) { tip_durum = 'ok';  tip_mesaj = `Cowles dispersiyon aralığında (9–30 m/s) — ${v_tip.toFixed(1)} m/s`; }
+        else                  { tip_durum = 'err'; tip_mesaj = 'Çok yüksek — pigment ve bağlayıcı zarar görebilir'; }
+    } else {
+        // Marine propeller / genel agitator
+        tip_kaynak = 'Paul et al. (2004) Handbook of Industrial Mixing';
+        if (v_tip < 0.5)      { tip_durum = 'err'; tip_mesaj = 'Çok düşük — karışma gerçekleşmez'; }
+        else if (v_tip < 1.0) { tip_durum = 'war'; tip_mesaj = 'Düşük — homojenlik yetersiz kalabilir'; }
+        else if (v_tip <= 6)  { tip_durum = 'ok';  tip_mesaj = `Marine propeller için ideal (1–6 m/s) — ${v_tip.toFixed(1)} m/s`; }
+        else if (v_tip <= 10) { tip_durum = 'war'; tip_mesaj = 'Yüksek — köpük ve hava girişi riski'; }
+        else                  { tip_durum = 'err'; tip_mesaj = 'Disperser bölgesi — tank karıştırıcı için çok yüksek'; }
+    }
+    kriterler.push({ ad: 'Uç Hızı', deger: `${v_tip.toFixed(2)} m/s`, durum: tip_durum, mesaj: tip_mesaj, kaynak: tip_kaynak });
+
+    // 5. Njs (pigment süspansiyonu)
+    if (njs_rpm !== null) {
+        let njs_durum, njs_mesaj;
+        if (n_rpm >= njs_rpm * 1.1) {
+            njs_durum = 'ok'; njs_mesaj = `Pigment askıda — ${(n_rpm/njs_rpm).toFixed(1)}× Njs`;
+        } else if (n_rpm >= njs_rpm) {
+            njs_durum = 'war'; njs_mesaj = `Sınırda — Njs'in tam üstünde, güvenlik payı az`;
+        } else {
+            njs_durum = 'err'; njs_mesaj = `Yetersiz! Njs=${njs_rpm.toFixed(0)} RPM gerekli, tank ${n_rpm.toFixed(0)} RPM`;
+        }
+        kriterler.push({ ad: 'Pigment Süspansiyonu (Njs)', deger: `${njs_rpm.toFixed(0)} RPM gerekli`, durum: njs_durum, mesaj: njs_mesaj });
+    }
+
+    // 6. P/V — pervane tipine göre literatür değerleri
+    // Agitator (karıştırıcı): 100–1000 W/m³ normal boya (chemical-engineering-review.com; Paul et al. 2004)
+    //   <100 W/m³ zayıf, >1000 W/m³ yüksek
+    // Disperser (Cowles/Lenart): 1 HP/10 galon ≈ 20.000 W/m³ tipik (Hockmeyer; PCI Magazine)
+    //   5.000–30.000 W/m³ normal dispersiyon aralığı
+    let pv_durum, pv_mesaj, pv_kaynak;
+    if (isHighShear) {
+        pv_kaynak = 'Hockmeyer (2022); PCI Magazine — 1HP/10gal dispersiyon standardı';
+        if (PV < 1000)         { pv_durum = 'war'; pv_mesaj = `P/V düşük (${PV.toFixed(0)} W/m³) — dispersiyon için 5.000–30.000 W/m³ beklenir`; }
+        else if (PV <= 30000)  { pv_durum = 'ok';  pv_mesaj = `Dispersiyon için uygun enerji yoğunluğu (${PV.toFixed(0)} W/m³)`; }
+        else                   { pv_durum = 'war'; pv_mesaj = 'Çok yüksek — aşırı kesme, pigment primer boyutuna inme riski'; }
+    } else {
+        pv_kaynak = 'chemical-engineering-review.com; Paul et al. (2004) Handbook';
+        if (PV < 100)          { pv_durum = 'war'; pv_mesaj = `Düşük enerji (${PV.toFixed(0)} W/m³) — pigment askıda kalmayabilir. Min 100 W/m³ önerilir`; }
+        else if (PV <= 1000)   { pv_durum = 'ok';  pv_mesaj = `Boya karıştırma için normal aralık — ${PV.toFixed(0)} W/m³`; }
+        else if (PV <= 5000)   { pv_durum = 'war'; pv_mesaj = `Yüksek enerji (${PV.toFixed(0)} W/m³) — hassas pigmentlere dikkat`; }
+        else                   { pv_durum = 'err'; pv_mesaj = `Çok yüksek (${PV.toFixed(0)} W/m³) — reoloji bozunması riski`; }
+    }
+    kriterler.push({ ad: 'Güç / Hacim (P/V)', deger: `${PV.toFixed(0)} W/m³`, durum: pv_durum, mesaj: pv_mesaj, kaynak: pv_kaynak });
+
+    // Genel karar
+    const errCount = kriterler.filter(k => k.durum === 'err').length;
+    const warCount = kriterler.filter(k => k.durum === 'war').length;
+    let genel;
+    if (errCount > 0) genel = 'err';
+    else if (warCount > 1) genel = 'war';
+    else if (warCount === 1) genel = 'war';
+    else genel = 'ok';
+
+    return {
+        tank, urun, imp, n_rpm, Re_eff, P_teorik, P_gercek,
+        v_tip, PV, Q_Ls: Q*1000, circ_s, njs_rpm,
+        V_urun_L, kapasite_pct, motor_yeterli,
+        kriterler, genel, errCount, warCount
+    };
+}
+
+function renderTankListesi(results) {
+    const container = document.getElementById('tankListesi');
+    const filtered = results.filter(r => {
+        if (selectedFilter !== 'all' && r.genel !== selectedFilter) return false;
+        if (selectedYer !== 'all' && r.tank.yer !== selectedYer) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state text-center py-8 text-slate-600"><p>Bu filtreye uygun tank yok.</p></div>';
+        return;
+    }
+
+    const BADGE = { ok: '✅ UYGUN', war: '⚠ ŞARTLI', err: '❌ UYGUN DEĞİL' };
+    const COLORS = { ok: '#4ade80', war: '#fbbf24', err: '#f87171' };
+
+    container.innerHTML = filtered.map((r, i) => {
+        const t = r.tank;
+        const hacimStr = `${r.V_urun_L.toFixed(0)} / ${t.kullanilabilir_lt || '?'} L`;
+        return `<div class="tank-row" data-idx="${results.indexOf(r)}" onclick="selectTank(${results.indexOf(r)})">
+            <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${COLORS[r.genel]}"></div>
+                    <div>
+                        <div class="font-black mono text-sm text-white">${t.kod}</div>
+                        <div class="text-[9px] text-slate-400 mt-0.5">${t.yer || ''} · ${t.tip} · ${r.imp.name}</div>
+                    </div>
+                </div>
+                <span class="badge-${r.genel}">${BADGE[r.genel]}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-2">
+                <div class="text-center"><div class="text-[8px] text-slate-600 mono">Kapasite</div><div class="text-[10px] font-bold mono text-slate-300">${r.kapasite_pct.toFixed(0)}%</div></div>
+                <div class="text-center"><div class="text-[8px] text-slate-600 mono">Re_eff</div><div class="text-[10px] font-bold mono text-slate-300">${Math.round(r.Re_eff).toLocaleString('tr-TR')}</div></div>
+                <div class="text-center"><div class="text-[8px] text-slate-600 mono">v_tip</div><div class="text-[10px] font-bold mono text-slate-300">${r.v_tip.toFixed(1)} m/s</div></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function selectTank(idx) {
+    // Seçim vurgula
+    document.querySelectorAll('.tank-row').forEach(el => el.classList.remove('selected'));
+    const rows = document.querySelectorAll('.tank-row');
+    rows.forEach(el => { if (parseInt(el.dataset.idx) === idx) el.classList.add('selected'); });
+
+    const r = analysisResults[idx];
+    if (!r) return;
+    const t = r.tank;
+
+    const BADGE = { ok: '✅ UYGUN', war: '⚠ ŞARTLI', err: '❌ UYGUN DEĞİL' };
+    const KARAR_CLASS = { ok: 'karar-ok', war: 'karar-war', err: 'karar-err' };
+    const KARAR_COLOR = { ok: '#4ade80', war: '#fbbf24', err: '#f87171' };
+
+    const kriterlerHTML = r.kriterler.map(k => `
+        <div class="kriter-row">
+            <div style="min-width:0;flex:1">
+                <div class="text-[9px] font-black text-slate-300 uppercase">${k.ad}</div>
+                <div class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">${k.mesaj}</div>
+                ${k.kaynak ? `<div class="text-[8px] mt-1 italic" style="color:#4b5563">📚 ${k.kaynak}</div>` : ''}
+            </div>
+            <div class="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
+                <span class="badge-${k.durum}">${{ ok:'✓ OK', war:'⚠ DİKKAT', err:'✗ SORUN' }[k.durum]}</span>
+                <span class="text-[9px] mono text-slate-400">${k.deger}</span>
+            </div>
+        </div>`).join('');
+
+    document.getElementById('tankDetayIcerigi').innerHTML = `
+        <div class="${KARAR_CLASS[r.genel]} p-4 rounded-xl mb-4 text-center">
+            <div class="text-2xl font-black mono" style="color:${KARAR_COLOR[r.genel]}">${BADGE[r.genel]}</div>
+            <div class="text-xs text-slate-400 mt-1">${r.errCount} kritik sorun · ${r.warCount} uyarı</div>
+        </div>
+        <div class="mb-4">
+            <div class="flex justify-between text-[9px] text-slate-500 mono uppercase mb-2">
+                <span>${t.kod}</span><span>${t.yer || ''}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">Tip</div><div class="font-bold text-slate-200">${t.tip}</div></div>
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">Pervane</div><div class="font-bold text-slate-200">${r.imp.name}</div></div>
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">Kapasite</div><div class="font-bold text-slate-200">${t.kullanilabilir_lt || '-'} L</div></div>
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">RPM</div><div class="font-bold text-slate-200">${t.rpm_max || t.rpm_min || '-'}</div></div>
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">Motor</div><div class="font-bold text-slate-200">${t.kw ? t.kw+' kW' : '-'}</div></div>
+                <div class="bg-black/30 p-2 rounded-lg"><div class="text-slate-600 mono">D pervane</div><div class="font-bold text-slate-200">${t.d_imp} m</div></div>
+            </div>
+        </div>
+        <div class="space-y-0 border border-white/05 rounded-xl overflow-hidden p-3" style="background:rgba(0,0,0,0.2)">
+            ${kriterlerHTML}
+        </div>
+        ${r.circ_s ? `<div class="mt-3 p-3 rounded-xl text-center" style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15)">
+            <div class="text-[9px] text-slate-500 mono uppercase">Sirkülasyon Süresi</div>
+            <div class="font-black mono text-green-400">${r.circ_s < 60 ? r.circ_s.toFixed(0)+' s/tur' : (r.circ_s/60).toFixed(1)+' dk/tur'}</div>
+            <div class="text-[9px] text-slate-500 mt-1">Homojenlik için 3–5 tur → ${(r.circ_s*3/60).toFixed(0)}–${(r.circ_s*5/60).toFixed(0)} dk</div>
+        </div>` : ''}`;
+}
+
+function buildYerFilters() {
+    const yerler = [...new Set(analysisResults.map(r => r.tank.yer).filter(Boolean))].sort();
+    const container = document.getElementById('yerFilters');
+    container.innerHTML = `<button class="tank-filter-btn ${selectedYer==='all'?'active':''}" data-yer="all">Tüm Yerler</button>`;
+    yerler.forEach(yer => {
+        const btn = document.createElement('button');
+        btn.className = `tank-filter-btn ${selectedYer===yer?'active':''}`;
+        btn.dataset.yer = yer;
+        btn.textContent = yer.replace('\n',' ');
+        container.appendChild(btn);
+    });
+    container.querySelectorAll('[data-yer]').forEach(btn => {
+        btn.onclick = () => {
+            selectedYer = btn.dataset.yer;
+            container.querySelectorAll('[data-yer]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderTankListesi(analysisResults);
+        };
+    });
+}
+
+function runUygunlukAnalysis() {
+    const urun = uygGetUrun();
+    const allTanks = [...TANK_DB, ...extraTanks];
+    analysisResults = allTanks.map(tank => analyzeTank(tank, urun));
+    // Sırala: önce ok, sonra war, sonra err; sonra kapasite pct
+    analysisResults.sort((a, b) => {
+        const order = { ok: 0, war: 1, err: 2 };
+        if (order[a.genel] !== order[b.genel]) return order[a.genel] - order[b.genel];
+        return a.kapasite_pct - b.kapasite_pct;
+    });
+    buildYerFilters();
+    renderTankListesi(analysisResults);
+    // Özet sayaçlar güncelle
+    const ok = analysisResults.filter(r=>r.genel==='ok').length;
+    const war = analysisResults.filter(r=>r.genel==='war').length;
+    const err = analysisResults.filter(r=>r.genel==='err').length;
+    document.querySelectorAll('#tankFilters .tank-filter-btn').forEach(btn => {
+        const f = btn.dataset.filter;
+        const counts = {all: analysisResults.length, ok, war, err};
+        btn.textContent = f==='all' ? `Tümü (${counts[f]})` :
+            f==='ok' ? `✅ Uygun (${ok})` :
+            f==='war' ? `⚠ Şartlı (${war})` : `❌ Uygun Değil (${err})`;
+    });
+}
+
+// Event listeners
+document.getElementById('uygAnalyzBtn').onclick = runUygunlukAnalysis;
+
+document.querySelectorAll('#tankFilters .tank-filter-btn').forEach(btn => {
+    btn.onclick = () => {
+        selectedFilter = btn.dataset.filter;
+        document.querySelectorAll('#tankFilters .tank-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderTankListesi(analysisResults);
+    };
+});
+
+document.getElementById('manuelEkleBtn').onclick = () => {
+    const tip = document.getElementById('m_tip').value;
+    const W = parseFloat(document.getElementById('m_D').value);
+    const newTank = {
+        kod: document.getElementById('m_kod').value || `ÖZEL-${extraTanks.length+1}`,
+        tip,
+        H: parseFloat(document.getElementById('m_H').value),
+        D: tip === 'silindirik' ? W : undefined,
+        W: tip === 'kare' ? W : undefined,
+        L: tip === 'kare' ? W : undefined,
+        kullanilabilir_lt: parseFloat(document.getElementById('m_hacim').value),
+        hacim_lt: parseFloat(document.getElementById('m_hacim').value) * 1.25,
+        d_imp: parseFloat(document.getElementById('m_dimp').value),
+        rpm_min: parseFloat(document.getElementById('m_rpm').value),
+        rpm_max: parseFloat(document.getElementById('m_rpm').value),
+        kw: parseFloat(document.getElementById('m_kw').value),
+        imp_tip: document.getElementById('m_imp').value,
+        malzeme: 'Manuel Giriş',
+        yer: document.getElementById('m_yer').value || 'Manuel',
+        urun_tipi: '',
+        min_lt: null,
+    };
+    extraTanks.push(newTank);
+    showToast(`"${newTank.kod}" eklendi`, '#22c55e');
+    runUygunlukAnalysis();
+};
+
+// Tab switching için ekleme
+document.getElementById('tabUygunluk').onclick = () => {
+    document.getElementById('pageMixing').style.display = 'none';
+    document.getElementById('pageDispersion').style.display = 'none';
+    document.getElementById('pageUygunluk').style.display = '';
+    document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active-page-tab'));
+    document.getElementById('tabUygunluk').classList.add('active-page-tab');
+};
+
+
+                // ============ PAGE TAB SWITCHING ============
         document.getElementById('tabMixing').onclick = () => {
             document.getElementById('pageMixing').style.display = '';
             document.getElementById('pageDispersion').style.display = 'none';
