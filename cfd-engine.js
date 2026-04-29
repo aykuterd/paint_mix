@@ -371,6 +371,53 @@ function cfdComputeMetrics(p) {
   return { mean, cov, homo, deadPct, t95_grenville: t95_model };
 }
 
+// ─── Yüzey Vorteksi (girdab) Derinliği ────────────────────────
+// Bafflesiz silindirik tankta dönen sıvıda merkezi yüzey çukurlaşması.
+// Kaynaklar:
+//   • Nagata (1975) "Mixing: Principles and Applications"
+//   • Rieger, Ditl & Novák (1979) "Vortex depth in mixed unbaffled vessels"
+//     Chem. Eng. Sci. 34(3): 397–403
+//   • Markopoulos & Kontogeorgaki (1995)
+//
+// Yaklaşık formül (türbülanslı, bafflesiz):
+//   h_v ≈ π²·N²·D⁴ / (2g·T²) · k_imp · f_turb
+// k_imp: pervane tipi katsayısı  (rushton 1.4, propeller 1.0, anchor 0.2 vb.)
+// f_turb = Re / (Re + 2000): viskoz rejimde vortex bastırılır
+// Baffle varsa h_v *= 0.10  (4-baffle vortex'i pratik olarak yok eder)
+function cfdVortexDepth(p) {
+  const g = 9.81;
+  const N = p.rpm / 60;
+  const Re = p.rho * N * p.D * p.D / Math.max(p.visc, 1e-6);
+  const f_turb = Re / (Re + 2000);
+  const k_imp = ({
+    propeller: 1.0, hydrofoil: 0.85, pbtd: 1.05, pbtu: 1.05,
+    rushton: 1.40, paddle: 1.10, cowles: 0.90, anchor: 0.20,
+  })[p.impeller] || 1.0;
+  let h_v = (Math.PI * Math.PI * N * N * Math.pow(p.D, 4))
+          / (2 * g * p.T * p.T) * k_imp * f_turb;
+  if (p.baffle) h_v *= 0.10;
+  return h_v;
+}
+
+// Taşma riski: vortex derinliği üstten boşluğu yiyor mu?
+function cfdOverflowStatus(p) {
+  const h_v = cfdVortexDepth(p);
+  const gap = Math.max(0, (p.Htank || p.H) - p.H);     // mevcut üstten boşluk (m)
+  const safety = 0.05;                                  // 5 cm güvenlik payı
+  let level, msg;
+  if (h_v + safety >= gap) {
+    level = 'critical';
+    msg = `Vortex derinliği (${(h_v*100).toFixed(0)} cm) üstten boşluğu (${(gap*100).toFixed(0)} cm) aşıyor — TAŞMA RİSKİ`;
+  } else if (h_v >= 0.6 * gap) {
+    level = 'warn';
+    msg = `Vortex (${(h_v*100).toFixed(0)} cm) güvenlik payını yiyor — RPM düşürün veya baffle ekleyin`;
+  } else {
+    level = 'ok';
+    msg = `Vortex ${(h_v*100).toFixed(0)} cm, üstten boşluk ${(gap*100).toFixed(0)} cm — güvenli`;
+  }
+  return { h_v, gap, safety, level, msg };
+}
+
 function cfdSampleProbes(p) {
   const { NR, NZ, C } = CFD;
   return CFD.probes.map(pr => {

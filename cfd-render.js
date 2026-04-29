@@ -55,28 +55,41 @@ function cfdDrawSideView(canvas, p) {
 
   const pad = { top: 25, bottom: 35, left: 30, right: 30 };
   const dW = W - pad.left - pad.right; // toplam genişlik (iki yarı)
-  const dH = H - pad.top - pad.bottom;
+  const dH = H - pad.top - pad.bottom; // tankın toplam yüksekliği (Htank)
   const halfW = dW / 2;               // her yarının genişliği
   const cellW = halfW / CFD.NR;       // her yarıdaki hücre genişliği
-  const cellH = dH / CFD.NZ;
+
+  // Sıvı dolgusu (Hliq) tankın altında oturur — hücre yüksekliği sıvı bölgesine göre
+  const Htank = p.Htank || p.H;
+  const liqFrac = Math.max(0.05, Math.min(1, p.H / Htank));
+  const dHliq = dH * liqFrac;            // sıvı bölgesinin px yüksekliği
+  const cellH = dHliq / CFD.NZ;          // hücreler sadece sıvı bölgesini kaplar
+  const liqTopY = pad.top + (dH - dHliq); // sıvı yüzeyi y-koord (üstten)
+
   const cx = pad.left + halfW;         // merkez x (eksen)
 
-  let vmax = 0;
-  for (let i = 0; i < CFD.NR * CFD.NZ; i++) if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
+  let vmax = 0, cmax = 0;
+  for (let i = 0; i < CFD.NR * CFD.NZ; i++) {
+    if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
+    if (CFD.C[i]    > cmax) cmax = CFD.C[i];
+  }
   vmax = Math.max(vmax, 1e-10);
+  cmax = Math.max(cmax, 1e-6);
 
   // ── Hücreleri çiz: sol yarı (ayna) + sağ yarı (normal) ──────
   for (let iz = 0; iz < CFD.NZ; iz++) {
     for (let ir = 0; ir < CFD.NR; ir++) {
       const idx = cfdIdx(ir, iz);
       let val;
-      if (CFD.viewMode === 'concentration') val = CFD.C[idx];
+      // Konsantrasyon: anlık Cmax'a göre normalize.
+      // Dağıldıkça Cmax mean'e iner, her hücrenin C/Cmax → 1 olur (her yer kırmızı).
+      if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
       else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
       else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / (vmax / (p.D * 0.5) + 1e-10));
       else val = CFD.vmag[idx] / vmax;
 
       const color = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
-      const y = pad.top + (CFD.NZ - 1 - iz) * cellH;
+      const y = liqTopY + (CFD.NZ - 1 - iz) * cellH;
       const cw = Math.ceil(cellW) + 1;
       const ch = Math.ceil(cellH) + 1;
 
@@ -96,7 +109,7 @@ function cfdDrawSideView(canvas, p) {
     const mask = cfdDeadZoneMask(p);
     for (let iz = 0; iz < CFD.NZ; iz++) {
       for (let ir = 0; ir < CFD.NR; ir++) {
-        const y = pad.top + (CFD.NZ - 1 - iz) * cellH;
+        const y = liqTopY + (CFD.NZ - 1 - iz) * cellH;
         const cw = Math.ceil(cellW) + 1;
         const ch = Math.ceil(cellH) + 1;
         let color;
@@ -133,7 +146,7 @@ function cfdDrawSideView(canvas, p) {
           const t = a/(a-b);
           const xC = r1+(r2-r1)*t, zC = z1+(z2-z1)*t;
           const px = cx + xC*cellW;
-          const py = pad.top + (CFD.NZ-1-zC)*cellH;
+          const py = liqTopY + (CFD.NZ-1-zC)*cellH;
           // Sağ taraf
           ctx.beginPath(); ctx.arc(px, py, 0.5, 0, Math.PI*2); ctx.stroke();
           // Sol taraf (ayna)
@@ -153,7 +166,7 @@ function cfdDrawSideView(canvas, p) {
         const mag = CFD.vmag[idx];
         if (mag < 1e-7) continue;
         const scale = (cellW * skip * 0.4) / vmax;
-        const cy_pt = pad.top + (CFD.NZ-1-iz+0.5)*cellH;
+        const cy_pt = liqTopY + (CFD.NZ-1-iz+0.5)*cellH;
         const alpha = Math.min(0.7, 0.15 + (mag/vmax)*0.55);
         ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
         ctx.lineWidth = 1;
@@ -176,7 +189,7 @@ function cfdDrawSideView(canvas, p) {
 
   // ── Streamlines ──────────────────────────────────────────────
   if (CFD.showStreamlines && CFD.viewMode !== 'deadzone') {
-    _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx);
+    _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx, liqTopY);
   }
 
   // ── Tank sınırı ──────────────────────────────────────────────
@@ -198,7 +211,8 @@ function cfdDrawSideView(canvas, p) {
   ctx.stroke(); ctx.setLineDash([]);
 
   // ── Pervane + Şaft (ortada) ───────────────────────────────────
-  const impY = pad.top + (1 - p.impH / p.H) * dH;
+  // Pervane fiziksel olarak tabandan impH yüksekliğinde — çizimde Htank'a göre konumlanır
+  const impY = pad.top + (1 - p.impH / Htank) * dH;
   const impHalfPx = (p.D / 2 / (p.T / 2)) * halfW; // pervane yarı çapı px cinsinden
   // Pervane (turuncu yatay çizgi, ortalı)
   ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3;
@@ -226,10 +240,11 @@ function cfdDrawSideView(canvas, p) {
   }
 
   // ── Probe noktaları (P1-P4) ───────────────────────────────────
+  // Probe'lar sıvı bölgesi içinde tanımlı (zn ∈ [0,1] sıvı taban→yüzey)
   const probeColors = ['#f97316','#3b82f6','#22c55e','#a855f7'];
   CFD.probes.forEach((pr, i) => {
     const px = cx + pr.rn * halfW; // sağ tarafta göster
-    const py = pad.top + (1 - pr.zn) * dH;
+    const py = liqTopY + (1 - pr.zn) * dHliq;
     ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI*2);
     ctx.strokeStyle = probeColors[i]; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
@@ -238,6 +253,28 @@ function cfdDrawSideView(canvas, p) {
     ctx.fillText(`P${i+1}`, px + 8, py + 3);
   });
 
+  // ── Sıvı yüzeyi (çizgi-çizgi hatched) ─────────────────────────
+  // Sıvı seviyesi tankın belirli bir yüksekliğinde — pervaneden bağımsız
+  ctx.strokeStyle = 'rgba(34,211,238,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(pad.left, liqTopY);
+  ctx.lineTo(pad.left + dW, liqTopY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Yüzey üstü hafif tarama (üstten boşluk)
+  if (liqTopY > pad.top + 1) {
+    ctx.strokeStyle = 'rgba(34,211,238,0.18)';
+    ctx.lineWidth = 0.5;
+    for (let x = pad.left - dH; x < pad.left + dW; x += 6) {
+      ctx.beginPath();
+      ctx.moveTo(x, pad.top);
+      ctx.lineTo(x + (liqTopY - pad.top), liqTopY);
+      ctx.stroke();
+    }
+  }
+
   // ── Eksen etiketleri ─────────────────────────────────────────
   ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono';
   ctx.textAlign = 'center';
@@ -245,10 +282,12 @@ function cfdDrawSideView(canvas, p) {
   ctx.fillText('merkez', cx, H - 6);
   ctx.fillText('duvar', pad.left + dW - 20, H - 6);
   ctx.textAlign = 'right';
-  ctx.fillText('H', pad.left - 4, pad.top + 10);
+  ctx.fillText('H_t', pad.left - 4, pad.top + 10);
   ctx.fillText('0', pad.left - 4, pad.top + dH);
-  ctx.fillStyle = '#22d3ee'; ctx.textAlign = 'center';
-  ctx.fillText('▼ Sıvı Seviyesi', cx, pad.top - 6);
+  ctx.fillStyle = '#22d3ee'; ctx.textAlign = 'left';
+  ctx.fillText('▼ Sıvı Seviyesi (H_l=' + p.H.toFixed(2) + 'm)', pad.left + 4, liqTopY - 3);
+  ctx.fillStyle = '#64748b'; ctx.textAlign = 'right';
+  ctx.fillText('Tank H=' + Htank.toFixed(2) + 'm', pad.left + dW - 4, pad.top + 10);
 }
 
 function _drawArrow(ctx, x1, y1, x2, y2, alpha) {
@@ -262,8 +301,9 @@ function _drawArrow(ctx, x1, y1, x2, y2, alpha) {
   ctx.fill();
 }
 
-function _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx) {
+function _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx, liqTopY) {
   const { NR, NZ, psi } = CFD;
+  const yBase = (typeof liqTopY === 'number') ? liqTopY : pad.top;
   let pmin = Infinity, pmax = -Infinity;
   for (let i = 0; i < NR*NZ; i++) { if(psi[i]<pmin)pmin=psi[i]; if(psi[i]>pmax)pmax=psi[i]; }
   const range = pmax - pmin;
@@ -278,10 +318,10 @@ function _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx) {
         const v00=psi[cfdIdx(ir,iz)]-target, v10=psi[cfdIdx(ir+1,iz)]-target;
         const v01=psi[cfdIdx(ir,iz+1)]-target, v11=psi[cfdIdx(ir+1,iz+1)]-target;
         const pts=[];
-        if(v00*v10<0){const t=v00/(v00-v10);pts.push([cx+(ir+t)*cellW, pad.top+(NZ-1-iz)*cellH]);}
-        if(v01*v11<0){const t=v01/(v01-v11);pts.push([cx+(ir+t)*cellW, pad.top+(NZ-2-iz)*cellH]);}
-        if(v00*v01<0){const t=v00/(v00-v01);pts.push([cx+ir*cellW, pad.top+(NZ-1-iz-t)*cellH]);}
-        if(v10*v11<0){const t=v10/(v10-v11);pts.push([cx+(ir+1)*cellW, pad.top+(NZ-1-iz-t)*cellH]);}
+        if(v00*v10<0){const t=v00/(v00-v10);pts.push([cx+(ir+t)*cellW, yBase+(NZ-1-iz)*cellH]);}
+        if(v01*v11<0){const t=v01/(v01-v11);pts.push([cx+(ir+t)*cellW, yBase+(NZ-2-iz)*cellH]);}
+        if(v00*v01<0){const t=v00/(v00-v01);pts.push([cx+ir*cellW, yBase+(NZ-1-iz-t)*cellH]);}
+        if(v10*v11<0){const t=v10/(v10-v11);pts.push([cx+(ir+1)*cellW, yBase+(NZ-1-iz-t)*cellH]);}
         if(pts.length>=2){
           // Sağ taraf
           ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); ctx.lineTo(pts[1][0],pts[1][1]); ctx.stroke();
@@ -365,10 +405,14 @@ function cfdDrawTopView(canvas, p) {
   const maxR = Math.min(W, H) / 2 - 20;
 
   // Draw polar projection at z = impeller height
-  const iz_imp = Math.round((p.impH / p.H) * (CFD.NZ - 1));
-  let vmax = 0;
-  for (let i = 0; i < CFD.NR * CFD.NZ; i++) if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
+  const iz_imp = Math.min(CFD.NZ - 1, Math.max(0, Math.round((p.impH / p.H) * (CFD.NZ - 1))));
+  let vmax = 0, cmax = 0;
+  for (let i = 0; i < CFD.NR * CFD.NZ; i++) {
+    if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
+    if (CFD.C[i]    > cmax) cmax = CFD.C[i];
+  }
   vmax = Math.max(vmax, 1e-10);
+  cmax = Math.max(cmax, 1e-6);
 
   const nTheta = 72;
   const dTheta = (2 * Math.PI) / nTheta;
@@ -379,7 +423,7 @@ function cfdDrawTopView(canvas, p) {
     const idx = cfdIdx(ir, iz_imp);
 
     let val;
-    if (CFD.viewMode === 'concentration') val = CFD.C[idx];
+    if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
     else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
     else val = CFD.vmag[idx] / vmax;
 

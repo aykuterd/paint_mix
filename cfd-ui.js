@@ -3,20 +3,57 @@
 // ============================================================
 
 function cfdGetParams() {
+  const T    = parseFloat(document.getElementById('cfd_T').value);
+  const Htank= parseFloat(document.getElementById('cfd_Htank').value);
+  const rho  = parseFloat(document.getElementById('cfd_rho').value);
+  const kg   = parseFloat(document.getElementById('cfd_kg').value);
+
+  // Sıvı hacmi (m³) = kg / yoğunluk; sıvı yüksekliği = V / (π·T²/4)
+  const A_section = Math.PI / 4 * T * T;             // m²
+  const V_liq     = (kg > 0 && rho > 0) ? kg / rho : 0; // m³
+  let   H_liq     = A_section > 1e-9 ? V_liq / A_section : 0;
+  // Sıvı taşmasın, minimum altı sıfır olmasın
+  H_liq = Math.max(0.05, Math.min(H_liq, Htank));
+
   return {
     impeller: document.getElementById('cfd_impeller').value,
-    T: parseFloat(document.getElementById('cfd_T').value),
-    H: parseFloat(document.getElementById('cfd_H').value),
-    D: parseFloat(document.getElementById('cfd_D').value),
+    T,
+    H:     H_liq,    // Fizik için kullanılan değer = gerçek sıvı yüksekliği
+    Htank,           // Çizim için tankın toplam yüksekliği
+    Vliq:  V_liq,
+    kg,
+    D:    parseFloat(document.getElementById('cfd_D').value),
     impH: parseFloat(document.getElementById('cfd_impH').value),
-    rpm: parseFloat(document.getElementById('cfd_rpm').value),
+    rpm:  parseFloat(document.getElementById('cfd_rpm').value),
     visc: parseFloat(document.getElementById('cfd_visc').value),
-    rho: parseFloat(document.getElementById('cfd_rho').value),
+    rho,
     baffle: document.getElementById('cfd_baffle').checked,
     nonNewt: document.getElementById('cfd_nonNewt').checked,
     nn_K: parseFloat(document.getElementById('cfd_nnK').value) || 10,
     nn_n: parseFloat(document.getElementById('cfd_nnN').value) || 0.5,
   };
+}
+
+function cfdUpdateLiqInfo(p) {
+  const volEl  = document.getElementById('cfd_liqVol');
+  const hEl    = document.getElementById('cfd_liqH');
+  const gapEl  = document.getElementById('cfd_liqGap');
+  const fillEl = document.getElementById('cfd_liqFill');
+  if (!volEl) return;
+  const gap = Math.max(0, p.Htank - p.H);
+  const fillPct = p.Htank > 0 ? (p.H / p.Htank) * 100 : 0;
+  volEl.innerText  = (p.Vliq * 1000).toFixed(0) + ' L  (' + p.Vliq.toFixed(3) + ' m³)';
+  hEl.innerText    = p.H.toFixed(2) + ' m';
+  gapEl.innerText  = gap.toFixed(2) + ' m';
+  fillEl.innerText = fillPct.toFixed(0) + '%';
+
+  // Pervane sıvı altında mı?
+  if (p.impH > p.H) {
+    hEl.style.color = '#f87171';
+    hEl.innerText += ' ⚠ Pervane sıvı dışında!';
+  } else {
+    hEl.style.color = '#67e8f9';
+  }
 }
 
 function cfdUpdateMetricsUI(p, stepInfo, metrics) {
@@ -103,7 +140,31 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
     </div>`;
   }
 
+  // ── Vorteks / Taşma kontrolü ─────────────────────────────────
+  const vx = cfdOverflowStatus(p);
+  const vxColor = vx.level === 'critical' ? '#f87171'
+                : vx.level === 'warn'     ? '#fbbf24' : '#4ade80';
+  const vxIcon  = vx.level === 'critical' ? '❌' : vx.level === 'warn' ? '⚠' : '✅';
+  const vxBarPct = Math.min(100, (vx.h_v / Math.max(vx.gap, 1e-3)) * 100).toFixed(0);
+  const vortex_html = `
+    <div class="p-3 rounded-xl mb-2" style="background:rgba(0,0,0,0.35);border:1px solid ${vxColor}40">
+      <div class="flex justify-between items-center mb-1">
+        <span class="text-[9px] font-black uppercase tracking-wider" style="color:${vxColor}">Yüzey Vorteksi & Taşma ${vxIcon}</span>
+        <span class="mono font-black text-base" style="color:${vxColor}">${(vx.h_v*100).toFixed(0)} cm</span>
+      </div>
+      <p class="text-[9px] leading-relaxed mb-1.5" style="color:#cbd5e1">${vx.msg}</p>
+      <div class="h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08)">
+        <div style="width:${vxBarPct}%;height:100%;background:${vxColor};border-radius:99px;transition:width 0.4s"></div>
+      </div>
+      <div class="flex justify-between text-[8px] mt-0.5 mono" style="color:#94a3b8">
+        <span>Vortex ${(vx.h_v*100).toFixed(1)} cm</span>
+        <span>Üst boşluk ${(vx.gap*100).toFixed(1)} cm</span>
+      </div>
+      <p class="text-[8px] italic mt-1" style="color:#64748b">Nagata (1975) · Rieger et al. (1979): h_v ≈ π²N²D⁴/(2gT²)·k_imp·f_turb</p>
+    </div>`;
+
   deadEl.innerHTML = `
+    ${vortex_html}
     ${yeterlilik_html}
     <div class="grid grid-cols-2 gap-1.5">
       <div class="rounded-lg p-2" style="background:rgba(0,0,0,0.3)">
@@ -235,6 +296,7 @@ function cfdResetSim() {
 
 function cfdRebuildOnChange() {
   const p = cfdGetParams();
+  cfdUpdateLiqInfo(p);
   cfdBuildStreamFunction(p);
   if (!CFD.running) {
     cfdDrawSideView(document.getElementById('cfd_canvas'), p);
@@ -266,9 +328,14 @@ function cfdBindEvents() {
     cfdRebuildOnChange();
   };
 
-  ['cfd_impeller', 'cfd_T', 'cfd_H', 'cfd_D', 'cfd_impH', 'cfd_visc', 'cfd_rho', 'cfd_baffle', 'cfd_nonNewt', 'cfd_nnK', 'cfd_nnN'].forEach(id => {
+  ['cfd_impeller', 'cfd_T', 'cfd_Htank', 'cfd_kg', 'cfd_D', 'cfd_impH', 'cfd_visc', 'cfd_rho', 'cfd_baffle', 'cfd_nonNewt', 'cfd_nnK', 'cfd_nnN'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', cfdRebuildOnChange);
+  });
+  // Sıvı yüksekliği etkileyen alanları "input" eventiyle de canlı hesapla
+  ['cfd_T', 'cfd_Htank', 'cfd_kg', 'cfd_rho'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => cfdUpdateLiqInfo(cfdGetParams()));
   });
 
   // Non-Newtonian toggle
@@ -283,7 +350,7 @@ function cfdBindEvents() {
       this.classList.add('active-view');
       CFD.viewMode = this.dataset.view;
       const labels = {
-        concentration: 'Konsantrasyon (normalize)',
+        concentration: 'C / Cmax (anlık) — dağılım arttıkça her yer kırmızıya yaklaşır',
         velocity: 'Hız büyüklüğü (normalize)',
         deadzone: 'Ölü bölge (kırmızı = düşük hız)',
         viscosity: 'Kesme hızı / Viskozite'
@@ -355,8 +422,8 @@ const CFD_IMP_MAP = {
 
 // Default değerler (Custom / sıfırla)
 const CFD_DEFAULTS = {
-  impeller: 'propeller', T: 1.3, H: 2.0, D: 0.3,
-  impH: 0.4, rpm: 100, visc: 0.5, rho: 1200, baffle: false
+  impeller: 'propeller', T: 1.3, Htank: 2.27, D: 0.3,
+  impH: 0.4, rpm: 100, visc: 0.5, rho: 1200, kg: 2400, baffle: false
 };
 
 function cfdBuildTankSelector() {
@@ -393,6 +460,7 @@ function cfdApplyTankSelection(kod) {
     // Custom — default değerlere dön
     cfdSetInputs(CFD_DEFAULTS);
     bilgiEl.classList.add('hidden');
+    cfdSetStartEnabled(true);
     cfdRebuildOnChange();
     return;
   }
@@ -402,32 +470,71 @@ function cfdApplyTankSelection(kod) {
 
   // Tank geometrisini çıkar
   const T = tank.D || tank.W || 1.3;
-  const H = tank.H || 2.0;
+  const Htank = tank.H || 2.27;
   const d_imp = tank.d_imp || 0.3;
   const rpm = tank.rpm_max || tank.rpm_min || 200;
   const imp = CFD_IMP_MAP[tank.imp_tip] || 'propeller';
 
   // Pervane yüksekliği: tipik olarak tank yüksekliğinin %20-25'i
-  const impH = Math.round(H * 0.22 * 100) / 100;
+  const impH = Math.round(Htank * 0.22 * 100) / 100;
+
+  // Varsayılan sipariş miktarı: tankın "kullanilabilir_lt" hacmini varsayılan
+  // yoğunluk (1200) ile dolduran kg miktarı.
+  const rho_def = 1200;
+  const kg_def = Math.round((tank.kullanilabilir_lt || 1500) * rho_def / 1000);
 
   // Kw varsa motoru da göster (sadece bilgi amaçlı)
   const kw = tank.kw ? `${tank.kw} kW` : '?';
 
-  cfdSetInputs({ impeller: imp, T, H, D: d_imp, impH, rpm, visc: 0.5, rho: 1200, baffle: false });
+  cfdSetInputs({ impeller: imp, T, Htank, D: d_imp, impH, rpm, visc: 0.5, rho: rho_def, kg: kg_def, baffle: false });
+
+  // Tank kesit geometrisi: silindirik dışı tipler için CFD desteklenmiyor
+  const tipi = (tank.tip || 'silindirik').toLowerCase();
+  const desteklenir = tipi === 'silindirik';
 
   // Bilgi kutusu
   bilgiEl.classList.remove('hidden');
+  const uyari = desteklenir ? '' : `
+    <div class="mt-2 p-2 rounded-lg" style="background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.35)">
+      <p class="text-[9px] font-black" style="color:#fca5a5">⚠ Tank kesit geometrisi: ${tank.tip}</p>
+      <p class="text-[9px] mt-1" style="color:#fecaca">CFD motoru şu an yalnızca silindirik (axisymmetric) tankları doğru hesaplıyor. Kare/dikdörtgen kesit için 3D model entegrasyonu eklenecek. Şimdilik simülasyon devre dışı.</p>
+    </div>`;
   bilgiEl.innerHTML = `
     <div class="grid grid-cols-2 gap-1">
       <span class="text-slate-500">Tesis:</span><span class="text-slate-200 font-bold">${tank.tesis || tank.yer || '-'}</span>
-      <span class="text-slate-500">Tank:</span><span class="text-slate-200">${tank.tip || 'silindirik'}</span>
+      <span class="text-slate-500">Tank:</span><span class="${desteklenir ? 'text-slate-200' : 'text-red-300 font-bold'}">${tank.tip || 'silindirik'}</span>
       <span class="text-slate-500">Hacim:</span><span class="text-slate-200">${tank.kullanilabilir_lt || '-'} L</span>
       <span class="text-slate-500">Motor:</span><span class="text-slate-200">${kw}</span>
       <span class="text-slate-500">Pervane:</span><span class="text-cyan-400">${tank.imp_tip?.replace(/_/g,' ') || '-'}</span>
     </div>
-    <p class="text-[8px] text-slate-500 mt-1 italic">Viskozite ve yoğunluğu üretilen boyaya göre girin.</p>`;
+    <p class="text-[8px] text-slate-500 mt-1 italic">Viskozite ve yoğunluğu üretilen boyaya göre girin.</p>
+    ${uyari}`;
+
+  // Başlat butonunu desteklenmeyen geometride devre dışı bırak
+  cfdSetStartEnabled(desteklenir, desteklenir ? '' : `Bu tank ${tank.tip} kesitli — CFD desteği henüz eklenmedi`);
 
   cfdRebuildOnChange();
+}
+
+// ─── Başlat butonu durumunu değiştir ─────────────────────────
+function cfdSetStartEnabled(enabled, reason) {
+  const btn = document.getElementById('cfd_startBtn');
+  if (!btn) return;
+  if (enabled) {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.title = '';
+    btn.dataset.disabledReason = '';
+  } else {
+    // Çalışıyorsa durdur
+    if (typeof CFD !== 'undefined' && CFD.running && typeof cfdStopSim === 'function') cfdStopSim();
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'not-allowed';
+    btn.title = reason || '';
+    btn.dataset.disabledReason = reason || 'devre dışı';
+  }
 }
 
 function cfdSetInputs(vals) {
@@ -436,7 +543,10 @@ function cfdSetInputs(vals) {
   if (impEl) impEl.value = vals.impeller;
 
   // Sayısal alanlar
-  const fields = { cfd_T: vals.T, cfd_H: vals.H, cfd_D: vals.D, cfd_impH: vals.impH, cfd_visc: vals.visc, cfd_rho: vals.rho };
+  const fields = {
+    cfd_T: vals.T, cfd_Htank: vals.Htank, cfd_D: vals.D, cfd_impH: vals.impH,
+    cfd_visc: vals.visc, cfd_rho: vals.rho, cfd_kg: vals.kg
+  };
   Object.entries(fields).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (el) el.value = val;
