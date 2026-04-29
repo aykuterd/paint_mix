@@ -1292,7 +1292,19 @@
               <i class="fas fa-wind text-sm"></i>
               <h2 class="font-black uppercase text-xs tracking-widest">CFD Kontrol Paneli</h2>
             </div>
-            <p class="text-[9px] text-slate-300 leading-relaxed mb-4">r-z eksenel simetrik 50×50 sonlu fark çözümü. Adveksiyon-Difüzyon denklemi ile konsantrasyon alanı, hız vektörleri ve ölü bölgeler hesaplanır.</p>
+            <p class="text-[9px] text-slate-300 leading-relaxed mb-4">Stream Function tabanlı 2D aksisimetrik model. Adveksiyon-Difüzyon denklemi, süreklilik otomatik sağlanır (∇·u≡0).</p>
+
+            <!-- Tank Seçici -->
+            <div class="p-3 rounded-xl mb-4" style="background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.2)">
+              <div class="flex items-center gap-2 mb-2" style="color:#22d3ee">
+                <i class="fas fa-database text-xs"></i>
+                <label class="text-[9px] font-black uppercase tracking-wider">Tank Envanterinden Seç</label>
+              </div>
+              <select id="cfd_tankSec" class="input-dark mb-2">
+                <option value="">— Manuel / Custom Giriş —</option>
+              </select>
+              <div id="cfd_tankSecBilgi" class="hidden text-[9px] text-slate-400 leading-relaxed p-2 rounded-lg" style="background:rgba(0,0,0,0.3)"></div>
+            </div>
 
             <div class="space-y-4">
               <div>
@@ -1300,11 +1312,12 @@
                 <select id="cfd_impeller" class="input-dark">
                   <option value="propeller">Marine Propeller (Aksiyel ↓)</option>
                   <option value="hydrofoil">Hydrofoil (Aksiyel ↓ Güçlü)</option>
+                  <option value="pbtd">Pitched Blade ↓ (Aşağı)</option>
+                  <option value="pbtu">Pitched Blade ↑ (Yukarı)</option>
                   <option value="paddle">Düz Palet (Radyal ←→)</option>
                   <option value="rushton">Rushton Türbini (Radyal ←→)</option>
+                  <option value="cowles">Cowles Diski (Yüksek Kesme)</option>
                   <option value="anchor">Anchor / Duvar Sıyırıcı</option>
-                  <option value="pbtu">Pitched Blade ↑ (Yukarı)</option>
-                  <option value="pbtd">Pitched Blade ↓ (Aşağı)</option>
                 </select>
               </div>
 
@@ -1322,7 +1335,7 @@
                   <input type="number" id="cfd_D" value="0.3" step="0.05" min="0.1" class="input-dark">
                 </div>
                 <div>
-                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pervane Yüksekliği (m)</label>
+                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pervane Yüks. (m)</label>
                   <input type="number" id="cfd_impH" value="0.4" step="0.05" min="0.05" class="input-dark">
                   <p class="text-[9px] text-slate-400 mt-0.5">Tabandan yükseklik</p>
                 </div>
@@ -1347,23 +1360,67 @@
                 </div>
               </div>
 
-              <!-- Baffle seçeneği -->
+              <!-- Baffle -->
               <div class="flex items-center gap-3 p-3 rounded-lg" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)">
                 <input type="checkbox" id="cfd_baffle" class="w-4 h-4" style="accent-color:#22d3ee">
                 <div>
-                  <label for="cfd_baffle" class="text-[10px] font-black text-slate-300 cursor-pointer">Baffle (Dalga Kıran) Var</label>
-                  <p class="text-[9px] text-slate-500">Vorteks engelleme, radyal akış artırma</p>
+                  <label for="cfd_baffle" class="text-[10px] font-black text-slate-300 cursor-pointer">Baffle (Dalga Kıran)</label>
+                  <p class="text-[9px] text-slate-500">Vorteks engelleme, eksenel akışı güçlendirir</p>
                 </div>
               </div>
 
-              <!-- Görünüm seçimi -->
+              <!-- Non-Newtonian -->
+              <div class="p-3 rounded-lg" style="background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.15)">
+                <div class="flex items-center gap-3 mb-2">
+                  <input type="checkbox" id="cfd_nonNewt" class="w-4 h-4" style="accent-color:#a855f7">
+                  <label for="cfd_nonNewt" class="text-[10px] font-black text-purple-300 cursor-pointer">Non-Newtonian (Power-Law)</label>
+                </div>
+                <div id="cfd_nnParams" style="display:none" class="grid grid-cols-2 gap-2 mt-2">
+                  <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">K (Pa·sⁿ)</label>
+                    <input type="number" id="cfd_nnK" value="10" step="1" min="0.1" class="input-dark mt-1">
+                  </div>
+                  <div>
+                    <label class="text-[9px] font-bold text-slate-500 uppercase">n (indeks)</label>
+                    <input type="number" id="cfd_nnN" value="0.5" step="0.05" min="0.1" max="1.0" class="input-dark mt-1">
+                  </div>
+                  <p class="col-span-2 text-[8px] text-slate-500">η = K·γ̇ⁿ⁻¹ — n&lt;1: shear-thinning (boya)</p>
+                </div>
+              </div>
+
+              <!-- Görünüm -->
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-2">Görünüm Modu</label>
-                <div class="grid grid-cols-3 gap-1">
+                <div class="grid grid-cols-2 gap-1">
                   <button class="cfd-view-btn active-view py-2 rounded-lg text-[9px] font-black transition" data-view="concentration">Konsantrasyon</button>
                   <button class="cfd-view-btn py-2 rounded-lg text-[9px] font-black transition" data-view="velocity">Hız Alanı</button>
                   <button class="cfd-view-btn py-2 rounded-lg text-[9px] font-black transition" data-view="deadzone">Ölü Bölge</button>
+                  <button class="cfd-view-btn py-2 rounded-lg text-[9px] font-black transition" data-view="viscosity">Kesme Hızı</button>
                 </div>
+              </div>
+
+              <!-- Options row -->
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Renk Haritası</label>
+                  <select id="cfd_colorMapSel" class="input-dark">
+                    <option value="jet">Jet</option>
+                    <option value="viridis">Viridis</option>
+                    <option value="inferno">Inferno</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sim Hızı</label>
+                  <div class="flex items-center gap-2">
+                    <input type="range" id="cfd_substeps" min="2" max="20" value="6" class="flex-1" style="accent-color:#22d3ee">
+                    <span id="cfd_substepsLabel" class="text-[9px] mono text-cyan-400">6x</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 p-2 rounded-lg" style="background:rgba(255,255,255,0.02)">
+                <input type="checkbox" id="cfd_streamlines" checked class="w-4 h-4" style="accent-color:#22d3ee">
+                <label for="cfd_streamlines" class="text-[9px] font-bold text-slate-400 cursor-pointer">Streamline Göster (ψ kontur)</label>
               </div>
 
               <div class="grid grid-cols-2 gap-2">
@@ -1379,11 +1436,20 @@
 
           <!-- Tracer Enjeksiyon -->
           <div class="glass-card p-4">
-            <div class="flex items-center gap-2 mb-3" style="color:#22d3ee">
+            <div class="flex items-center gap-2 mb-3" style="color:#7c3aed">
               <i class="fas fa-syringe text-xs"></i>
               <h3 class="font-black uppercase text-xs tracking-widest">Tracer Enjeksiyonu</h3>
             </div>
-            <p class="text-[9px] text-slate-300 leading-relaxed mb-3">Homojenlik t₉₅ ölçümü için tracer konsantrasyonu tank üstüne enjekte edilir. CoV &lt; 0.05 hedefler.</p>
+            <p class="text-[9px] text-slate-300 leading-relaxed mb-3">t₉₅ ölçümü için tracer blob enjekte edin. CoV &lt; 0.05 → %95 homojenlik.</p>
+            <div class="mb-2">
+              <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Enjeksiyon Noktası</label>
+              <select id="cfd_tracerPos" class="input-dark">
+                <option value="top">Üst (yüzey yakını)</option>
+                <option value="center">Merkez</option>
+                <option value="wall">Duvar yakını</option>
+                <option value="bottom">Taban</option>
+              </select>
+            </div>
             <button id="cfd_injectBtn" class="w-full py-2 rounded-lg font-black text-xs text-white" style="background:#7c3aed">
               <i class="fas fa-plus-circle mr-1"></i> Tracer Enjekte Et
             </button>
@@ -1401,8 +1467,18 @@
                 <span id="cfd_dead" class="mono font-black text-red-400">--%</span>
               </div>
               <div class="flex justify-between text-[9px]">
-                <span class="text-slate-500">Simülasyon Süresi</span>
+                <span class="text-slate-400">Sim. Zamanı (fiziksel)</span>
                 <span id="cfd_simtime" class="mono font-black text-slate-300">-- s</span>
+              </div>
+            </div>
+            <!-- Probe Legend -->
+            <div class="mt-3 p-2 rounded-lg" style="background:rgba(0,0,0,0.25)">
+              <p class="text-[8px] font-black text-slate-400 uppercase mb-1.5">Tracer Ölçüm Noktaları</p>
+              <div class="grid grid-cols-2 gap-1">
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#f97316"></div><span class="text-[8px] text-slate-400">P1 Üst Merkez</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#3b82f6"></div><span class="text-[8px] text-slate-400">P2 Alt Duvar</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#22c55e"></div><span class="text-[8px] text-slate-400">P3 Orta</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#a855f7"></div><span class="text-[8px] text-slate-400">P4 Alt Merkez</span></div>
               </div>
             </div>
           </div>
@@ -1422,14 +1498,14 @@
           </div>
         </div>
 
-        <!-- Orta: Ana Canvas -->
+        <!-- Orta: Canvaslar -->
         <div class="lg:col-span-6 space-y-4">
           <div class="glass-card overflow-hidden">
             <div class="p-4 flex justify-between items-center bg-slate-900/80 border-b border-white/5">
               <div class="flex items-center gap-3">
                 <span id="cfd_statusDot" class="flex h-2 w-2 rounded-full bg-slate-600"></span>
-                <h3 class="text-xs font-black tracking-widest text-slate-400 mono">r-z EKSENELSİMETRİK CFD</h3>
-                <span class="text-[9px] mono text-slate-600">50×50 FD — Adveksiyon-Difüzyon</span>
+                <h3 class="text-xs font-black tracking-widest text-slate-400 mono">STREAM FUNCTION CFD v2</h3>
+                <span class="text-[9px] mono text-slate-400">50×80 · ψ-tabanlı</span>
               </div>
               <div class="flex items-center gap-2">
                 <span id="cfd_stepLabel" class="text-[9px] mono text-slate-500">adım: 0</span>
@@ -1439,16 +1515,17 @@
               </div>
             </div>
 
-            <!-- Tank kesit canvas -->
-            <div class="relative bg-slate-950" style="padding:16px">
-              <canvas id="cfd_canvas" width="480" height="520" style="width:100%;display:block;border-radius:8px"></canvas>
-              <!-- Koordinat etiketi -->
-              <div class="absolute left-4 top-6 text-[9px] mono text-slate-600">z↑</div>
-              <div class="absolute bottom-6 right-4 text-[9px] mono text-slate-600">r→</div>
+            <!-- Dual Canvas: Side + Top -->
+            <div class="relative bg-slate-950 flex flex-wrap justify-center gap-3" style="padding:12px">
+              <canvas id="cfd_canvas" width="420" height="520" style="max-width:55%;height:auto;display:block;border-radius:8px;background:#070c1a"></canvas>
+              <div class="flex flex-col gap-3" style="max-width:42%">
+                <canvas id="cfd_topCanvas" width="300" height="300" style="width:100%;height:auto;display:block;border-radius:8px;background:#070c1a"></canvas>
+                <canvas id="cfd_velProfile" width="300" height="110" style="width:100%;background:transparent;border-radius:8px"></canvas>
+              </div>
             </div>
           </div>
 
-          <!-- Alt metrik barlar -->
+          <!-- Homojenlik Barı -->
           <div class="glass-card p-4">
             <div class="flex justify-between items-end mb-2">
               <span class="text-[9px] font-black text-slate-400 mono uppercase">Homojenlik İlerlemesi (CoV Bazlı)</span>
@@ -1457,28 +1534,33 @@
             <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
               <div id="cfd_homoBar" class="h-full rounded-full transition-all duration-300" style="width:0%;background:linear-gradient(90deg,#dc2626,#f59e0b,#22c55e)"></div>
             </div>
-            <div class="flex justify-between mt-1.5 text-[9px] mono text-slate-600">
+            <div class="flex justify-between mt-1.5 text-[9px] mono text-slate-400">
               <span>0% (karışmamış)</span>
               <span>t₉₅ hedef: CoV &lt; 0.05</span>
               <span>100% (homojen)</span>
             </div>
           </div>
 
-          <!-- Hız profili grafiği -->
+          <!-- CoV-Zaman Grafiği -->
           <div class="glass-card p-4">
             <div class="flex items-center gap-2 mb-3" style="color:#22d3ee">
-              <i class="fas fa-chart-line text-xs"></i>
-              <h3 class="font-black uppercase text-xs tracking-widest">Eksenel Hız Profili (r yönü)</h3>
+              <i class="fas fa-chart-area text-xs"></i>
+              <h3 class="font-black uppercase text-xs tracking-widest">Konsantrasyon & CoV — Zaman Grafiği</h3>
+              <div class="ml-auto flex gap-2 items-center">
+                <span class="w-3 h-0.5 bg-cyan-400 inline-block rounded"></span><span class="text-[8px] text-slate-500">CoV</span>
+                <span class="w-3 h-0.5 bg-orange-400 inline-block rounded"></span><span class="text-[8px] text-slate-500">P1</span>
+                <span class="w-3 h-0.5 bg-blue-400 inline-block rounded"></span><span class="text-[8px] text-slate-500">P2</span>
+                <span class="w-3 h-0.5 bg-green-400 inline-block rounded"></span><span class="text-[8px] text-slate-500">P3</span>
+                <span class="w-3 h-0.5 bg-purple-400 inline-block rounded"></span><span class="text-[8px] text-slate-500">P4</span>
+              </div>
             </div>
-            <canvas id="cfd_velProfile" width="480" height="120" style="width:100%;background:transparent"></canvas>
-            <p class="text-[9px] text-slate-500 mt-1">Pervane seviyesinde r=0'dan r=T/2'ye hız dağılımı. Sıfır geçişler ölü bölge sınırlarını gösterir.</p>
+            <canvas id="cfd_covGraph" width="600" height="160" style="width:100%;background:transparent;border-radius:8px"></canvas>
+            <p class="text-[9px] text-slate-500 mt-1">Prob noktaları yandaki kesitte ○ ile gösterilir. t₉₅ = CoV'nin 0.05 altına düştüğü an.</p>
           </div>
         </div>
 
-        <!-- Sağ: Fizik Bilgisi + Metrikler -->
+        <!-- Sağ: Metrikler -->
         <div class="lg:col-span-3 space-y-4">
-
-          <!-- Akış Rejimi -->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-4" style="color:#22d3ee">
               <i class="fas fa-microchip text-sm"></i>
@@ -1486,25 +1568,25 @@
             </div>
             <div class="space-y-2">
               <div class="rounded-xl p-3 border text-center" style="background:#0a0f1e;border-color:rgba(34,211,238,0.2)">
-                <p class="text-[9px] text-slate-600 mono uppercase mb-0.5">Reynolds Sayısı</p>
+                <p class="text-[9px] text-slate-300 mono uppercase mb-0.5">Reynolds Sayısı</p>
                 <p id="cfd_re" class="text-2xl font-black mono text-cyan-400">--</p>
                 <p id="cfd_reStatus" class="text-[9px] text-slate-400 mt-0.5">--</p>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-600 mono">D_eff (Difüzyon)</p>
+                  <p class="text-[8px] text-slate-300 mono">D_eff (Difüzyon)</p>
                   <p id="cfd_deff" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-600 mono">v_tip</p>
+                  <p class="text-[8px] text-slate-300 mono">v_tip</p>
                   <p id="cfd_vtip" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-600 mono">Q pompalama</p>
+                  <p class="text-[8px] text-slate-300 mono">Q pompalama</p>
                   <p id="cfd_Q" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-600 mono">Sirkülasyon</p>
+                  <p class="text-[8px] text-slate-300 mono">Sirkülasyon</p>
                   <p id="cfd_circ" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
               </div>
@@ -1515,10 +1597,10 @@
           <div class="glass-card p-4">
             <div class="flex items-center gap-2 mb-3 text-red-400">
               <i class="fas fa-skull text-xs"></i>
-              <h3 class="font-black uppercase text-xs tracking-widest">Ölü Bölge Analizi</h3>
+              <h3 class="font-black uppercase text-xs tracking-widest">Ölü Bölge & Güç Analizi</h3>
             </div>
             <div id="cfd_deadZoneInfo" class="space-y-2 text-[9px] text-slate-300 leading-relaxed">
-              <p class="text-slate-500 italic">Simülasyon başlatıldığında ölü bölgeler kırmızı ile gösterilir.</p>
+              <p class="text-slate-500 italic">Simülasyon başlatıldığında veriler burada görünür.</p>
             </div>
           </div>
 
@@ -1530,20 +1612,22 @@
             </div>
             <div class="space-y-2 text-[9px] text-slate-300 leading-relaxed">
               <div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                <p class="text-cyan-400 font-bold mb-1">Adveksiyon-Difüzyon</p>
+                <p class="text-cyan-400 font-bold mb-1">Stream Function (ψ)</p>
+                <p class="mono text-slate-400" style="font-size:0.65rem">ur=(1/r)·∂ψ/∂z, uz=-(1/r)·∂ψ/∂r</p>
+                <p class="text-slate-500 mt-1">Süreklilik denklemi otomatik sağlanır.</p>
+              </div>
+              <div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
+                <p class="text-purple-400 font-bold mb-1">Adveksiyon-Difüzyon</p>
                 <p class="mono text-slate-400" style="font-size:0.65rem">∂C/∂t + u·∇C = D_eff·∇²C</p>
+                <p class="text-slate-500 mt-1">Upwind adveksiyon + CFL kararlılık</p>
               </div>
               <div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                <p class="text-purple-400 font-bold mb-1">Hız Alanı</p>
-                <p class="text-slate-400">Pervane tipine özgü analitik akış deseni (aksiyel/radyal). Stream function bazlı.</p>
+                <p class="text-yellow-400 font-bold mb-1">Non-Newtonian</p>
+                <p class="text-slate-400">Power-Law: η=K·γ̇ⁿ⁻¹ — yerel viskozite</p>
               </div>
               <div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                <p class="text-yellow-400 font-bold mb-1">Ölü Bölge Kriteri</p>
-                <p class="text-slate-400">|u| &lt; 0.05 × u_max olan hücreler ölü bölge sayılır (Nienow 1997).</p>
-              </div>
-              <div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                <p class="text-green-400 font-bold mb-1">Sınırlar</p>
-                <p class="text-slate-400">Basitleştirilmiş model. Gerçek CFD (OpenFOAM k-ε) ile kalibre edilmemiştir. Niteliksel gösterim amaçlıdır.</p>
+                <p class="text-green-400 font-bold mb-1">Referanslar</p>
+                <p class="text-slate-500">Patankar (1980), Grenville & Nienow (2004), Zwietering (1958), Nienow (1997)</p>
               </div>
             </div>
           </div>
@@ -1552,6 +1636,9 @@
       </div>
     </div>
     </div> <!-- end #pageCFD -->
+
+
+
 
     <!-- Compare Modal (Mixing) -->
     <div id="compareModal">
@@ -3512,612 +3599,19 @@ document.getElementById('tabUygunluk').onclick = () => {
         };
 
         // ============================================================
-        // CFD ENGINE — r-z Eksenel Simetrik Adveksiyon-Difüzyon
-        // 50×50 Sonlu Fark, Hız Alanı + Konsantrasyon + Ölü Bölge
-        // Referans: Patankar (1980) Numerical Heat Transfer and Fluid Flow
         // ============================================================
-
-        const CFD_NR = 50;  // r yönü grid sayısı
-        const CFD_NZ = 50;  // z yönü grid sayısı
-        let cfdRunning = false;
-        let cfdAnimId = null;
-        let cfdStep = 0;
-        let cfdTime = 0;
-        let cfdViewMode = 'concentration';
-
-        // Grid arrays
-        let cfdC  = new Float32Array(CFD_NR * CFD_NZ);  // konsantrasyon
-        let cfdC2 = new Float32Array(CFD_NR * CFD_NZ);  // tampon
-        let cfdUr = new Float32Array(CFD_NR * CFD_NZ);  // radyal hız
-        let cfdUz = new Float32Array(CFD_NR * CFD_NZ);  // eksenel hız
-        let cfdVmag = new Float32Array(CFD_NR * CFD_NZ); // hız büyüklüğü
-
-        function cfdIdx(r, z) { return z * CFD_NR + r; }
-
-        // ─── Pervane Hız Alanı Modeli ─────────────────────────────────
-        function cfdBuildVelocityField(params) {
-            const { impeller, T, H, D, impH, rpm } = params;
-            const N = rpm / 60;
-            const vtip = Math.PI * D * N;
-            const R = T / 2;
-
-            const dr = R / CFD_NR;
-            const dz = H / CFD_NZ;
-
-            // Pervane konumu (grid index)
-            const iz_imp = Math.round((impH / H) * CFD_NZ);
-            const ir_imp = Math.round((D / 2 / R) * CFD_NR);
-
-            for (let iz = 0; iz < CFD_NZ; iz++) {
-                for (let ir = 0; ir < CFD_NR; ir++) {
-                    const r = (ir + 0.5) * dr;
-                    const z = (iz + 0.5) * dz;
-                    const r_n = r / R;      // 0-1 normalize
-                    const z_n = z / H;      // 0-1 normalize
-                    const dz_imp = z - impH;
-                    const dr_imp = r - D/2;
-
-                    let ur = 0, uz = 0;
-
-                    if (impeller === 'propeller' || impeller === 'hydrofoil' || impeller === 'pbtd') {
-                        // Aksiyel aşağı: Merkez ↓, kenar ↑
-                        // Stream function yaklaşımı: çift sirkülasyon halkası
-                        const strength = impeller === 'hydrofoil' ? 1.3 : 1.0;
-                        const Qp = 0.50 * N * Math.pow(D, 3) * strength;
-
-                        // Pervane bölgesinde aksiyel jet
-                        const jet_r = Math.exp(-Math.pow(r_n / 0.35, 2));
-                        const jet_z = Math.exp(-Math.pow(dz_imp / (H * 0.3), 2));
-                        uz = -vtip * 0.25 * jet_r * jet_z * strength;
-
-                        // Sirkülasyon: duvarda yukarı
-                        const wall_jet = Math.exp(-Math.pow((r_n - 0.85) / 0.2, 2));
-                        uz += vtip * 0.12 * wall_jet;
-
-                        // Radyal akış (pervane altı)
-                        if (dz_imp < 0) {
-                            ur = vtip * 0.08 * r_n * Math.exp(-Math.pow(dz_imp / (H * 0.2), 2));
-                        } else {
-                            ur = -vtip * 0.06 * r_n * Math.exp(-Math.pow(dz_imp / (H * 0.25), 2));
-                        }
-
-                    } else if (impeller === 'pbtu') {
-                        // Aksiyel yukarı
-                        const jet_r = Math.exp(-Math.pow(r_n / 0.35, 2));
-                        const jet_z = Math.exp(-Math.pow(dz_imp / (H * 0.3), 2));
-                        uz = +vtip * 0.25 * jet_r * jet_z;
-                        const wall_jet = Math.exp(-Math.pow((r_n - 0.85) / 0.2, 2));
-                        uz -= vtip * 0.12 * wall_jet;
-                        ur = -vtip * 0.06 * r_n * Math.exp(-Math.pow(dz_imp / (H * 0.25), 2));
-
-                    } else if (impeller === 'paddle' || impeller === 'rushton') {
-                        // Radyal: pervane seviyesinde güçlü radyal jet
-                        const strength = impeller === 'rushton' ? 1.4 : 1.0;
-                        const jet_z = Math.exp(-Math.pow(dz_imp / (H * 0.15), 2));
-                        ur = vtip * 0.3 * r_n * jet_z * strength;
-
-                        // Üst ve alt sirkülasyon halkaları
-                        const upper = z_n > (impH/H);
-                        const dist_z = Math.abs(dz_imp) / H;
-                        const circ = Math.exp(-Math.pow(dist_z / 0.3, 2));
-                        uz = upper
-                            ? -vtip * 0.08 * (1 - r_n) * circ
-                            : +vtip * 0.08 * (1 - r_n) * circ;
-
-                    } else if (impeller === 'anchor') {
-                        // Duvar sıyırıcı: duvar boyunca aksiyel akış
-                        const wall_r = Math.exp(-Math.pow((r_n - 0.92) / 0.12, 2));
-                        uz = vtip * 0.15 * wall_r * Math.sin(Math.PI * z_n);
-                        // Merkez dönüşü
-                        const center_r = Math.exp(-Math.pow(r_n / 0.3, 2));
-                        uz -= vtip * 0.08 * center_r * Math.sin(Math.PI * z_n);
-                        ur = vtip * 0.05 * Math.sin(Math.PI * r_n) * Math.cos(Math.PI * z_n * 0.5);
-                    }
-
-                    // Baffle etkisi: radyal akışı kırmak, türbülansı artır
-                    if (params.baffle && impeller !== 'anchor') {
-                        ur *= 0.6;  // radyal zayıflar
-                        uz *= 1.2;  // eksenel güçlenir
-                    }
-
-                    cfdUr[cfdIdx(ir, iz)] = ur;
-                    cfdUz[cfdIdx(ir, iz)] = uz;
-                    cfdVmag[cfdIdx(ir, iz)] = Math.sqrt(ur*ur + uz*uz);
-                }
-            }
-        }
-
-        // ─── Adveksiyon-Difüzyon Çözümü (Explicit FD) ────────────────
-        // ∂C/∂t + ur·∂C/∂r + uz·∂C/∂z = D_eff · (1/r·∂/∂r(r·∂C/∂r) + ∂²C/∂z²)
-        // Silindirik koordinat Laplacian dahil
-
-        function cfdStep_solve(params) {
-            const { T, H, visc, rho } = params;
-            const R = T / 2;
-            const dr = R / CFD_NR;
-            const dz = H / CFD_NZ;
-            const N  = params.rpm / 60;
-            const D  = params.D;
-
-            // Efektif difüzyon: moleküler + türbülanslı (basit k-epsilon benzeri)
-            const Re = rho * N * D * D / visc;
-            const D_mol = visc / rho * 0.001;
-            const vtip  = Math.PI * D * N;
-            const D_turb = Re > 10 ? 0.09 * vtip * D * 0.01 : 0;
-            const D_eff  = D_mol + D_turb;
-
-            // CFL kararlılık koşulu: dt ≤ min(dr,dz)² / (2*D_eff)
-            const vmaxAll = Math.max(...cfdVmag) || 1e-6;
-            const dt_diff = 0.25 * Math.min(dr, dz) * Math.min(dr, dz) / (D_eff + 1e-10);
-            const dt_adv  = 0.4  * Math.min(dr, dz) / (vmaxAll + 1e-10);
-            const dt = Math.min(dt_diff, dt_adv, 0.5);
-
-            for (let iz = 0; iz < CFD_NZ; iz++) {
-                for (let ir = 0; ir < CFD_NR; ir++) {
-                    const idx = cfdIdx(ir, iz);
-                    const r = (ir + 0.5) * dr;
-
-                    // Sınır: duvar (r=R) ve taban/üst (z=0, z=H) — Neumann (∂C/∂n=0)
-                    const Cij  = cfdC[idx];
-                    const Ci1j = ir > 0       ? cfdC[cfdIdx(ir-1, iz)] : Cij;
-                    const Ci2j = ir < CFD_NR-1 ? cfdC[cfdIdx(ir+1, iz)] : Cij;
-                    const Cij1 = iz > 0       ? cfdC[cfdIdx(ir, iz-1)] : Cij;
-                    const Cij2 = iz < CFD_NZ-1 ? cfdC[cfdIdx(ir, iz+1)] : Cij;
-
-                    const ur = cfdUr[idx];
-                    const uz = cfdUz[idx];
-
-                    // Difüzyon — silindirik Laplacian
-                    const d2Cdr2 = (Ci2j - 2*Cij + Ci1j) / (dr*dr);
-                    const dCdr   = (Ci2j - Ci1j) / (2*dr);
-                    const d2Cdz2 = (Cij2 - 2*Cij + Cij1) / (dz*dz);
-                    const laplacian = d2Cdr2 + (1/r)*dCdr + d2Cdz2;
-
-                    // Adveksiyon — 1. derece upwind
-                    const adv_r = ur > 0
-                        ? ur * (Cij - Ci1j) / dr
-                        : ur * (Ci2j - Cij) / dr;
-                    const adv_z = uz > 0
-                        ? uz * (Cij - Cij1) / dz
-                        : uz * (Cij2 - Cij) / dz;
-
-                    cfdC2[idx] = Cij + dt * (D_eff * laplacian - adv_r - adv_z);
-                    cfdC2[idx] = Math.max(0, Math.min(1, cfdC2[idx]));
-                }
-            }
-
-            // Swap buffer
-            cfdC.set(cfdC2);
-            return { dt, D_eff, vtip, Re };
-        }
-
-        // ─── Metrikleri Hesapla ───────────────────────────────────────
-        function cfdComputeMetrics() {
-            let sum = 0, sum2 = 0, n = 0, dead = 0;
-            const vmaxAll = Math.max(...cfdVmag) || 1;
-            for (let i = 0; i < CFD_NR * CFD_NZ; i++) {
-                sum  += cfdC[i]; n++;
-                sum2 += cfdC[i] * cfdC[i];
-                if (cfdVmag[i] < 0.05 * vmaxAll) dead++;
-            }
-            const mean = sum / n;
-            const variance = sum2 / n - mean * mean;
-            const stddev = Math.sqrt(Math.max(0, variance));
-            const cov = mean > 0.001 ? stddev / mean : 1.0;
-            const homo = Math.max(0, Math.min(100, (1 - cov / 1.0) * 100));
-            const deadPct = (dead / n) * 100;
-            return { mean, cov, homo, deadPct };
-        }
-
-        // ─── Canvas Çizim ─────────────────────────────────────────────
-        function cfdDraw(params) {
-            const canvas = document.getElementById('cfd_canvas');
-            const ctx    = canvas.getContext('2d');
-            const W = canvas.width;
-            const H_canvas = canvas.height;
-
-            ctx.clearRect(0, 0, W, H_canvas);
-
-            const pad = { top: 20, bottom: 30, left: 50, right: 20 };
-            const drawW = W - pad.left - pad.right;
-            const drawH = H_canvas - pad.top - pad.bottom;
-
-            const cellW = drawW / CFD_NR;
-            const cellH = drawH / CFD_NZ;
-
-            // Renk skalası fonksiyonu
-            function valToColor(val, mode) {
-                val = Math.max(0, Math.min(1, val));
-                if (mode === 'concentration') {
-                    // Mavi (0) → Cyan → Yeşil → Sarı → Kırmızı (1)
-                    const colors = [
-                        [10,15,46],[30,58,138],[14,165,233],[34,211,238],
-                        [74,222,128],[251,191,36],[249,115,22],[239,68,68]
-                    ];
-                    const i = val * (colors.length - 1);
-                    const lo = Math.floor(i), hi = Math.min(colors.length-1, lo+1);
-                    const t = i - lo;
-                    const c = colors[lo].map((v,idx) => Math.round(v + t*(colors[hi][idx]-v)));
-                    return `rgb(${c[0]},${c[1]},${c[2]})`;
-                } else if (mode === 'velocity') {
-                    const r = Math.round(val * 220);
-                    const g = Math.round(val * 50 + (1-val)*30);
-                    const b = Math.round((1-val) * 200 + val * 20);
-                    return `rgb(${r},${g},${b})`;
-                } else { // deadzone
-                    const dead = val < 0.05;
-                    return dead ? `rgba(239,68,68,${0.5+val*5})` : `rgba(34,211,238,${0.1+val*0.4})`;
-                }
-            }
-
-            const vmaxAll = Math.max(...cfdVmag) || 1;
-
-            for (let iz = 0; iz < CFD_NZ; iz++) {
-                for (let ir = 0; ir < CFD_NR; ir++) {
-                    const idx = cfdIdx(ir, iz);
-                    let val;
-                    if (cfdViewMode === 'concentration') {
-                        val = cfdC[idx];
-                    } else if (cfdViewMode === 'velocity') {
-                        val = cfdVmag[idx] / vmaxAll;
-                    } else {
-                        val = cfdVmag[idx] / vmaxAll;
-                    }
-
-                    const x = pad.left + ir * cellW;
-                    const y = pad.top  + (CFD_NZ - 1 - iz) * cellH; // z yukarı
-
-                    ctx.fillStyle = valToColor(val, cfdViewMode);
-                    ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(cellW)+1, Math.ceil(cellH)+1);
-                }
-            }
-
-            // Hız vektörleri (her 5. hücre)
-            if (cfdViewMode !== 'deadzone') {
-                const skip = 5;
-                ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-                ctx.lineWidth = 1;
-                for (let iz = 0; iz < CFD_NZ; iz += skip) {
-                    for (let ir = 0; ir < CFD_NR; ir += skip) {
-                        const idx = cfdIdx(ir, iz);
-                        const ur = cfdUr[idx];
-                        const uz = cfdUz[idx];
-                        const mag = cfdVmag[idx];
-                        if (mag < 1e-6) continue;
-
-                        const scale = (cellW * skip * 0.45) / (vmaxAll + 1e-10);
-                        const cx = pad.left + (ir + 0.5) * cellW;
-                        const cy = pad.top  + (CFD_NZ - 1 - iz + 0.5) * cellH;
-                        const ex = cx + ur * scale;
-                        const ey = cy - uz * scale; // z yukarı = canvas aşağı ters
-
-                        ctx.beginPath();
-                        ctx.moveTo(cx, cy);
-                        ctx.lineTo(ex, ey);
-                        ctx.stroke();
-
-                        // Ok ucu
-                        const angle = Math.atan2(ey - cy, ex - cx);
-                        ctx.beginPath();
-                        ctx.moveTo(ex, ey);
-                        ctx.lineTo(ex - 4*Math.cos(angle-0.4), ey - 4*Math.sin(angle-0.4));
-                        ctx.lineTo(ex - 4*Math.cos(angle+0.4), ey - 4*Math.sin(angle+0.4));
-                        ctx.closePath();
-                        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                        ctx.fill();
-                    }
-                }
-            }
-
-            // Tank sınırı
-            ctx.strokeStyle = 'rgba(100,116,139,0.7)';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(pad.left, pad.top, drawW, drawH);
-
-            // Pervane göstergesi
-            const { D, H, impH, T } = params;
-            const R = T / 2;
-            const iz_imp_px = pad.top + (1 - impH/H) * drawH;
-            const ir_D_px   = (D/2/R) * drawW;
-            ctx.strokeStyle = '#f97316';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(pad.left, iz_imp_px);
-            ctx.lineTo(pad.left + ir_D_px, iz_imp_px);
-            ctx.stroke();
-
-            // Eksen etiketleri
-            ctx.fillStyle = '#64748b';
-            ctx.font = '9px JetBrains Mono';
-            ctx.textAlign = 'center';
-            ctx.fillText('r=0', pad.left, H_canvas - 8);
-            ctx.fillText('r=T/2', pad.left + drawW, H_canvas - 8);
-            ctx.textAlign = 'right';
-            ctx.fillText('H', pad.left - 4, pad.top + 8);
-            ctx.fillText('0', pad.left - 4, pad.top + drawH);
-
-            // Sıvı seviyesi çizgisi
-            ctx.strokeStyle = 'rgba(34,211,238,0.3)';
-            ctx.setLineDash([3, 3]);
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(pad.left, pad.top);
-            ctx.lineTo(pad.left + drawW, pad.top);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        // ─── Hız Profili Grafiği ──────────────────────────────────────
-        function cfdDrawVelProfile(params) {
-            const canvas = document.getElementById('cfd_velProfile');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const W = canvas.width, H = canvas.height;
-            const pad = { top: 10, bottom: 20, left: 40, right: 10 };
-            const dW = W - pad.left - pad.right;
-            const dH = H - pad.top - pad.bottom;
-
-            const { impH, H: tankH } = params;
-            const iz_imp = Math.round((impH / tankH) * CFD_NZ);
-
-            const vals = [];
-            for (let ir = 0; ir < CFD_NR; ir++) {
-                vals.push(cfdUz[cfdIdx(ir, Math.min(iz_imp, CFD_NZ-1))]);
-            }
-
-            const vmax = Math.max(...vals.map(Math.abs)) || 1;
-            const xS = ir => pad.left + (ir / (CFD_NR-1)) * dW;
-            const yS = v  => pad.top + dH/2 - (v / vmax) * (dH/2 * 0.85);
-
-            // Zero line
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(pad.left, pad.top + dH/2);
-            ctx.lineTo(pad.left + dW, pad.top + dH/2);
-            ctx.stroke();
-
-            // Profile
-            ctx.beginPath();
-            ctx.strokeStyle = '#22d3ee';
-            ctx.lineWidth = 2;
-            vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
-            ctx.stroke();
-
-            // Fill
-            ctx.beginPath();
-            vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
-            ctx.lineTo(pad.left + dW, pad.top + dH/2);
-            ctx.lineTo(pad.left, pad.top + dH/2);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(34,211,238,0.12)';
-            ctx.fill();
-
-            // Labels
-            ctx.fillStyle = '#475569';
-            ctx.font = '8px JetBrains Mono';
-            ctx.textAlign = 'left';
-            ctx.fillText('uz↑', 2, pad.top + 10);
-            ctx.fillText('uz↓', 2, pad.top + dH - 5);
-        }
-
-        // ─── CFD Parametrelerini Al ───────────────────────────────────
-        function cfdGetParams() {
-            return {
-                impeller: document.getElementById('cfd_impeller').value,
-                T:    parseFloat(document.getElementById('cfd_T').value),
-                H:    parseFloat(document.getElementById('cfd_H').value),
-                D:    parseFloat(document.getElementById('cfd_D').value),
-                impH: parseFloat(document.getElementById('cfd_impH').value),
-                rpm:  parseFloat(document.getElementById('cfd_rpm').value),
-                visc: parseFloat(document.getElementById('cfd_visc').value),
-                rho:  parseFloat(document.getElementById('cfd_rho').value),
-                baffle: document.getElementById('cfd_baffle').checked,
-            };
-        }
-
-        // ─── UI Güncelle ─────────────────────────────────────────────
-        function cfdUpdateUI(params, stepInfo, metrics) {
-            const { Re, D_eff, vtip } = stepInfo;
-            const { cov, homo, deadPct } = metrics;
-            document.getElementById('cfd_re').innerText = Math.round(Re).toLocaleString('tr-TR');
-            const reEl = document.getElementById('cfd_reStatus');
-            if (Re < 10)       { reEl.innerText='Lamineer';   reEl.style.color='#60a5fa'; }
-            else if (Re < 10000){ reEl.innerText='Geçiş';     reEl.style.color='#fbbf24'; }
-            else                { reEl.innerText='Türbülanslı'; reEl.style.color='#4ade80'; }
-
-            document.getElementById('cfd_deff').innerText  = D_eff.toExponential(2) + ' m²/s';
-            document.getElementById('cfd_vtip').innerText  = vtip.toFixed(2) + ' m/s';
-
-            const Nq = 0.50; const N = params.rpm/60;
-            const Q = Nq * N * Math.pow(params.D,3) * 1000;
-            const Vl = Math.PI/4 * params.T*params.T * params.H * 1000;
-            document.getElementById('cfd_Q').innerText    = Q.toFixed(2) + ' L/s';
-            document.getElementById('cfd_circ').innerText = (Vl/Q).toFixed(0) + ' s/tur';
-
-            document.getElementById('cfd_cov').innerText  = cov.toFixed(3);
-            document.getElementById('cfd_cov').style.color = cov < 0.05 ? '#4ade80' : cov < 0.2 ? '#fbbf24' : '#f87171';
-            document.getElementById('cfd_homo').innerText = homo.toFixed(0) + '%';
-            document.getElementById('cfd_dead').innerText = deadPct.toFixed(1) + '%';
-            document.getElementById('cfd_dead').style.color = deadPct < 5 ? '#4ade80' : deadPct < 20 ? '#fbbf24' : '#f87171';
-            document.getElementById('cfd_simtime').innerText = cfdTime.toFixed(1) + ' s';
-            document.getElementById('cfd_timeDisplay').innerText = cfdTime.toFixed(1);
-            document.getElementById('cfd_stepLabel').innerText = 'adım: ' + cfdStep;
-
-            // Homojenlik barı
-            document.getElementById('cfd_homoBar').style.width = homo.toFixed(0) + '%';
-            document.getElementById('cfd_homoBar_val').innerText = homo.toFixed(0) + '%';
-
-            // Ölü bölge bilgisi
-            const deadEl = document.getElementById('cfd_deadZoneInfo');
-            deadEl.innerHTML = `
-                <div class="flex justify-between p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                    <span>Ölü Bölge Oranı</span>
-                    <span class="mono font-bold" style="color:${deadPct<5?'#4ade80':deadPct<20?'#fbbf24':'#f87171'}">${deadPct.toFixed(1)}%</span>
-                </div>
-                <div class="flex justify-between p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
-                    <span>Aktif Hücre Oranı</span>
-                    <span class="mono font-bold text-cyan-400">${(100-deadPct).toFixed(1)}%</span>
-                </div>
-                <p class="text-[9px] leading-relaxed" style="color:${deadPct<5?'#4ade80':deadPct<20?'#94a3b8':'#f87171'}">
-                    ${deadPct < 5 ? '✅ Ölü bölge yok — iyi karışma geometrisi' :
-                      deadPct < 15 ? '⚠ Düşük hızlı bölgeler var — daha yüksek RPM deneyin' :
-                      deadPct < 30 ? '⚠ Belirgin ölü bölgeler — baffle ekleyin veya pervane konumunu değiştirin' :
-                      '❌ Geniş ölü bölgeler — bu geometri homojen karışma sağlamıyor'}
-                </p>`;
-        }
-
-        // ─── Ana Döngü ────────────────────────────────────────────────
-        let cfdLastStepInfo = { Re:0, D_eff:0, vtip:0 };
-
-        function cfdLoop() {
-            if (!cfdRunning) return;
-            const params = cfdGetParams();
-            const si = cfdStep_solve(params);
-            cfdLastStepInfo = si;
-            cfdTime += si.dt;
-            cfdStep++;
-
-            // Her 3 adımda bir çiz (performans)
-            if (cfdStep % 3 === 0) {
-                cfdDraw(params);
-                cfdDrawVelProfile(params);
-                const metrics = cfdComputeMetrics();
-                cfdUpdateUI(params, si, metrics);
-            }
-            cfdAnimId = requestAnimationFrame(cfdLoop);
-        }
-
-        // ─── Başlat / Sıfırla ────────────────────────────────────────
-        function cfdStart() {
-            const params = cfdGetParams();
-            cfdBuildVelocityField(params);
-            cfdC.fill(0);
-            cfdC2.fill(0);
-            cfdStep = 0;
-            cfdTime = 0;
-            cfdRunning = true;
-            document.getElementById('cfd_statusDot').style.background = '#22c55e';
-            document.getElementById('cfd_statusDot').classList.add('animate-pulse');
-            document.getElementById('cfd_startBtn').innerHTML = '<i class="fas fa-stop"></i> DURDUR';
-            document.getElementById('cfd_startBtn').style.background = '#7f1d1d';
-            cfdDraw(params);
-            cfdLoop();
-        }
-
-        function cfdStop() {
-            cfdRunning = false;
-            if (cfdAnimId) cancelAnimationFrame(cfdAnimId);
-            document.getElementById('cfd_statusDot').style.background = '#64748b';
-            document.getElementById('cfd_statusDot').classList.remove('animate-pulse');
-            document.getElementById('cfd_startBtn').innerHTML = '<i class="fas fa-play"></i> BAŞLAT';
-            document.getElementById('cfd_startBtn').style.background = '#0e7490';
-        }
-
-        function cfdReset() {
-            cfdStop();
-            cfdC.fill(0);
-            cfdC2.fill(0);
-            cfdStep = 0; cfdTime = 0;
-            const params = cfdGetParams();
-            cfdBuildVelocityField(params);
-            cfdDraw(params);
-            cfdDrawVelProfile(params);
-            ['cfd_cov','cfd_homo','cfd_dead','cfd_simtime'].forEach(id => {
-                document.getElementById(id).innerText = '--';
-            });
-            document.getElementById('cfd_homoBar').style.width = '0%';
-            document.getElementById('cfd_homoBar_val').innerText = '0%';
-        }
-
-        // Tracer enjeksiyon: üstten gaussian blob
-        function cfdInjectTracer() {
-            const params = cfdGetParams();
-            const iz_top = CFD_NZ - 3;
-            for (let ir = 0; ir < CFD_NR; ir++) {
-                for (let diz = 0; diz < 8; diz++) {
-                    const iz = iz_top - diz;
-                    if (iz < 0) continue;
-                    const gauss = Math.exp(-Math.pow(diz/3,2)) * Math.exp(-Math.pow((ir - CFD_NR/4)/8,2));
-                    cfdC[cfdIdx(ir, iz)] = Math.min(1, cfdC[cfdIdx(ir, iz)] + gauss);
-                }
-            }
-            if (!cfdRunning) cfdDraw(params);
-        }
-
-        // Parametreler değişince hız alanını yeniden hesapla
-        function cfdRebuildOnChange() {
-            const params = cfdGetParams();
-            cfdBuildVelocityField(params);
-            if (!cfdRunning) {
-                cfdDraw(params);
-                cfdDrawVelProfile(params);
-                const N = params.rpm/60;
-                const Re = params.rho * N * params.D * params.D / params.visc;
-                const vtip = Math.PI * params.D * N;
-                cfdUpdateUI(params, { Re, D_eff:0, vtip }, {cov:1, homo:0, deadPct:50});
-            }
-        }
-
-        // ─── Event Listeners ─────────────────────────────────────────
-        document.getElementById('cfd_startBtn').onclick = () => {
-            if (cfdRunning) cfdStop(); else cfdStart();
-        };
-        document.getElementById('cfd_resetBtn').onclick = cfdReset;
-        document.getElementById('cfd_injectBtn').onclick = cfdInjectTracer;
-
-        document.getElementById('cfd_rpm').oninput = function() {
-            document.getElementById('cfd_rpmLabel').innerText = this.value + ' RPM';
-            cfdRebuildOnChange();
-        };
-
-        ['cfd_impeller','cfd_T','cfd_H','cfd_D','cfd_impH','cfd_visc','cfd_rho','cfd_baffle'].forEach(id => {
-            document.getElementById(id).addEventListener('change', cfdRebuildOnChange);
-        });
-
-        document.querySelectorAll('.cfd-view-btn').forEach(btn => {
-            btn.onclick = function() {
-                document.querySelectorAll('.cfd-view-btn').forEach(b => b.classList.remove('active-view'));
-                this.classList.add('active-view');
-                cfdViewMode = this.dataset.view;
-                const scaleLabel = document.getElementById('cfd_scaleLabel');
-                if (cfdViewMode === 'concentration') scaleLabel.innerText = 'Konsantrasyon (normalize)';
-                else if (cfdViewMode === 'velocity') scaleLabel.innerText = 'Hız büyüklüğü (normalize)';
-                else scaleLabel.innerText = 'Ölü bölge (kırmızı = düşük hız)';
-                const params = cfdGetParams();
-                if (!cfdRunning) cfdDraw(params);
-            };
-        });
-
-        // Tab switching — CFD sekmesi
-        document.getElementById('tabCFD').onclick = () => {
-            document.getElementById('pageMixing').style.display = 'none';
-            document.getElementById('pageDispersion').style.display = 'none';
-            document.getElementById('pageUygunluk').style.display = 'none';
-            document.getElementById('pageCFD').style.display = '';
-            document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active-page-tab'));
-            document.getElementById('tabCFD').classList.add('active-page-tab');
-            // İlk açılışta hız alanını çiz
-            const params = cfdGetParams();
-            cfdBuildVelocityField(params);
-            cfdDraw(params);
-            cfdDrawVelProfile(params);
-            cfdRebuildOnChange();
-        };
-
-        // Diğer sekme geçişlerinde CFD durdur
-        ['tabMixing','tabDispersion','tabUygunluk'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.addEventListener('click', () => { if (cfdRunning) cfdStop(); });
-        });
-
-        // İlk yükleme: hız alanını başlat
-        (function cfdInit() {
-            const params = cfdGetParams();
-            cfdBuildVelocityField(params);
-        })();
+        // CFD ENGINE v2 — Loaded from external modules
+        // ============================================================
+        // (Engine, Renderer, and UI Controller loaded via <script> tags)
+
+        // Tab switching — CFD tab is handled in cfd-ui.js
+        // Other tab switches need to stop CFD
+        // CFD stop on tab switch is handled in cfd-ui.js
 
 
     </script>
+    <script src="cfd-engine.js"></script>
+    <script src="cfd-render.js"></script>
+    <script src="cfd-ui.js"></script>
 </body>
 </html>
