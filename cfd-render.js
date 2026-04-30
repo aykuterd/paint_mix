@@ -702,9 +702,7 @@ function cfdDrawVelProfile(canvas, p) {
   ctx.font = 'bold 12px JetBrains Mono';
   const lw = ctx.measureText(vmaxLabel).width + 16;
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.beginPath();
-  ctx.roundRect(pad.left + dW - lw, 6, lw, 22, 5);
-  ctx.fill();
+  ctx.fillRect(pad.left + dW - lw, 6, lw, 22);
   ctx.fillStyle = '#fbbf24';
   ctx.textAlign = 'right';
   ctx.fillText(vmaxLabel, pad.left + dW - 8, 21);
