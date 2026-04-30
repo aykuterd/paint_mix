@@ -1502,6 +1502,7 @@
               </div>
               <p class="text-[8px] text-slate-600 mt-1.5 leading-relaxed">Tracer enjeksiyonundan sonra CoV grafiğinde her noktanın konsantrasyon değişimi izlenir.</p>
             </div>
+          </div><!-- /Tracer Enjeksiyon card -->
 
           <!-- Renk skalası -->
           <div class="glass-card p-4">
@@ -1703,6 +1704,8 @@
       </div>
     </div>
     </div> <!-- end #pageCFD -->
+
+
 
 
 
@@ -3677,7 +3680,6 @@ document.getElementById('tabUygunluk').onclick = () => {
             const existing = document.getElementById(id);
             if (existing) existing.addEventListener('click', () => { if (typeof CFD !== 'undefined' && CFD.running) cfdStopSim(); });
         });
-
 
     </script>
     <script src="cfd-engine.js"></script>
