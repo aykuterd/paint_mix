@@ -290,9 +290,9 @@
             <!-- Versiyon Etiketi -->
             <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg mono" style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2)">
                 <i class="fas fa-code-branch text-xs" style="color:#22d3ee"></i>
-                <span class="text-xs font-black" style="color:#22d3ee">v1.1.0</span>
+                <span class="text-xs font-black" style="color:#22d3ee">v1.2.0</span>
                 <span class="text-xs" style="color:#475569">+</span>
-                <span class="text-xs font-bold" style="color:#67e8f9">speed-graph-card</span>
+                <span class="text-xs font-bold" style="color:#67e8f9">vel-profile-card</span>
             </div>
             <button id="openHelp" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-700 text-slate-200 hover:bg-slate-600 transition flex items-center gap-2">
                 <i class="fas fa-book-open"></i>
@@ -1486,21 +1486,22 @@
                 <span id="cfd_dead" class="mono font-black text-red-400">--%</span>
               </div>
               <div class="flex justify-between text-[9px]">
-                <span class="text-slate-400">Sim. Zamanı (fiziksel)</span>
+                <span class="text-slate-500">Sim. Zamanı (fiziksel)</span>
                 <span id="cfd_simtime" class="mono font-black text-slate-300">-- s</span>
               </div>
             </div>
-            <!-- Probe Legend -->
+
+            <!-- Probe Noktaları Açıklaması -->
             <div class="mt-3 p-2 rounded-lg" style="background:rgba(0,0,0,0.25)">
-              <p class="text-[8px] font-black text-slate-400 uppercase mb-1.5">Tracer Ölçüm Noktaları</p>
+              <p class="text-[8px] font-black text-slate-500 uppercase mb-1.5">Tracer Ölçüm Noktaları</p>
               <div class="grid grid-cols-2 gap-1">
-                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#f97316"></div><span class="text-[8px] text-slate-400">P1 Üst Merkez</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#3b82f6"></div><span class="text-[8px] text-slate-400">P2 Alt Duvar</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#22c55e"></div><span class="text-[8px] text-slate-400">P3 Orta</span></div>
-                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2" style="border-color:#a855f7"></div><span class="text-[8px] text-slate-400">P4 Alt Merkez</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2 flex-shrink-0" style="border-color:#f97316;background:rgba(0,0,0,0.5)"></div><span class="text-[8px] text-slate-400">P1 Üst Merkez</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2 flex-shrink-0" style="border-color:#3b82f6;background:rgba(0,0,0,0.5)"></div><span class="text-[8px] text-slate-400">P2 Alt Duvar</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2 flex-shrink-0" style="border-color:#22c55e;background:rgba(0,0,0,0.5)"></div><span class="text-[8px] text-slate-400">P3 Orta</span></div>
+                <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full border-2 flex-shrink-0" style="border-color:#a855f7;background:rgba(0,0,0,0.5)"></div><span class="text-[8px] text-slate-400">P4 Alt Merkez</span></div>
               </div>
+              <p class="text-[8px] text-slate-600 mt-1.5 leading-relaxed">Tracer enjeksiyonundan sonra CoV grafiğinde her noktanın konsantrasyon değişimi izlenir.</p>
             </div>
-          </div>
 
           <!-- Renk skalası -->
           <div class="glass-card p-4">
@@ -1524,7 +1525,7 @@
               <div class="flex items-center gap-3">
                 <span id="cfd_statusDot" class="flex h-2 w-2 rounded-full bg-slate-600"></span>
                 <h3 class="text-xs font-black tracking-widest text-slate-400 mono">STREAM FUNCTION CFD v2</h3>
-                <span class="text-[9px] mono text-slate-400">50×80 · ψ-tabanlı</span>
+                <span class="text-[9px] mono text-slate-600">50×80 · ψ-tabanlı</span>
               </div>
               <div class="flex items-center gap-2">
                 <span id="cfd_stepLabel" class="text-[9px] mono text-slate-500">adım: 0</span>
@@ -1539,8 +1540,46 @@
               <canvas id="cfd_canvas" width="420" height="520" style="max-width:55%;height:auto;display:block;border-radius:8px;background:#070c1a"></canvas>
               <div class="flex flex-col gap-3" style="max-width:42%">
                 <canvas id="cfd_topCanvas" width="300" height="300" style="width:100%;height:auto;display:block;border-radius:8px;background:#070c1a"></canvas>
-                <canvas id="cfd_velProfile" width="300" height="110" style="width:100%;background:transparent;border-radius:8px"></canvas>
               </div>
+            </div>
+          </div>
+
+          <!-- Hız Profili Kartı -->
+          <div class="glass-card p-4">
+            <div class="flex items-center gap-2 mb-3" style="color:#f97316">
+              <i class="fas fa-wave-square text-sm"></i>
+              <h3 class="font-black uppercase text-xs tracking-widest">Pervane Seviyesinde Hız Dağılımı</h3>
+              <div class="ml-auto flex gap-4 items-center">
+                <span class="inline-flex items-center gap-2">
+                  <span class="inline-block rounded" style="width:24px;height:3px;background:#22d3ee"></span>
+                  <span class="text-sm font-black" style="color:#22d3ee">uz — Eksenel</span>
+                </span>
+                <span class="inline-flex items-center gap-2">
+                  <svg width="24" height="7" viewBox="0 0 24 7"><line x1="0" y1="3.5" x2="24" y2="3.5" stroke="#f97316" stroke-width="2.5" stroke-dasharray="5 3"/></svg>
+                  <span class="text-sm font-black" style="color:#f97316">ur — Radyal</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Grafik -->
+            <canvas id="cfd_velProfile" width="700" height="220" style="width:100%;background:#070c1a;border-radius:10px;border:1px solid rgba(255,255,255,0.06)"></canvas>
+
+            <!-- Açıklama -->
+            <div class="mt-3 p-3 rounded-xl leading-relaxed" style="background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.22)">
+              <p class="text-sm font-black mb-2" style="color:#fb923c">Bu grafik ne gösteriyor ve sayılar ne anlama geliyor?</p>
+              <p class="text-sm leading-relaxed mb-2" style="color:#e2e8f0">
+                Grafik, pervane yüksekliğindeki yatay kesitte <b style="color:#22d3ee">tank merkezinden (r = 0, sol kenar)</b> duvara <b style="color:#22d3ee">(r = T/2, sağ kenar)</b> uzanan hız profilini gösterir; Y ekseni m/s cinsindendir ve ortadaki yatay çizgi <b style="color:#94a3b8">0 m/s = hareketsiz</b> bölgeye karşılık gelir.
+              </p>
+              <p class="text-sm leading-relaxed mb-2" style="color:#e2e8f0">
+                <b style="color:#22d3ee">uz (cyan, düz)</b> eksenel yani yukarı-aşağı hareketi gösterir: pozitif değerler sıvının yukarı itildiğini, negatif değerler aşağı çekildiğini ifade eder — Propeller veya Hydrofoil gibi aksiyel pervane seçilince bu eğri baskın olur ve merkez bölgede belirgin bir tepe oluşturur.
+                <b style="color:#f97316">ur (turuncu, kesik)</b> ise radyal yani içe-dışa hareketi gösterir: Rushton veya Cowles gibi radyal pervane seçilince ur baskın hale gelir ve sıvı duvara doğru fırlatılır.
+              </p>
+              <p class="text-sm leading-relaxed mb-2" style="color:#e2e8f0">
+                Sayılar büyüdükçe (eğri sıfır çizgisinden uzaklaştıkça) pervane o bölgede daha güçlü bir akış oluşturuyor demektir; endüstride iyi bir karıştırma için tepe hızın sağ taraftaki metrikler panelindeki <b style="color:#fbbf24">v_tip</b> değerinin en az <b style="color:#4ade80">%20–40</b>'ı kadar olması beklenir.
+              </p>
+              <p class="text-sm leading-relaxed" style="color:#e2e8f0">
+                Her iki eğri de <b style="color:#ef4444">sıfıra yakın ve düz</b> kalıyorsa o bölge <b style="color:#ef4444">ölü bölge</b> adayıdır: pervane oraya yeterince ulaşamıyor, pigment çökebilir ve homojenlik düşer — RPM artırın, pervane tipini değiştirin veya baffle ekleyin.
+              </p>
             </div>
           </div>
 
@@ -1553,7 +1592,7 @@
             <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
               <div id="cfd_homoBar" class="h-full rounded-full transition-all duration-300" style="width:0%;background:linear-gradient(90deg,#dc2626,#f59e0b,#22c55e)"></div>
             </div>
-            <div class="flex justify-between mt-1.5 text-[9px] mono text-slate-400">
+            <div class="flex justify-between mt-1.5 text-[9px] mono text-slate-600">
               <span>0% (karışmamış)</span>
               <span>t₉₅ hedef: CoV &lt; 0.05</span>
               <span>100% (homojen)</span>
@@ -1596,25 +1635,25 @@
             </div>
             <div class="space-y-2">
               <div class="rounded-xl p-3 border text-center" style="background:#0a0f1e;border-color:rgba(34,211,238,0.2)">
-                <p class="text-[9px] text-slate-300 mono uppercase mb-0.5">Reynolds Sayısı</p>
+                <p class="text-[9px] text-slate-600 mono uppercase mb-0.5">Reynolds Sayısı</p>
                 <p id="cfd_re" class="text-2xl font-black mono text-cyan-400">--</p>
                 <p id="cfd_reStatus" class="text-[9px] text-slate-400 mt-0.5">--</p>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-300 mono">D_eff (Difüzyon)</p>
+                  <p class="text-[8px] text-slate-600 mono">D_eff (Difüzyon)</p>
                   <p id="cfd_deff" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-300 mono">v_tip</p>
+                  <p class="text-[8px] text-slate-600 mono">v_tip</p>
                   <p id="cfd_vtip" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-300 mono">Q pompalama</p>
+                  <p class="text-[8px] text-slate-600 mono">Q pompalama</p>
                   <p id="cfd_Q" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
                 <div class="rounded-lg p-2 border" style="background:#0a0f1e;border-color:rgba(255,255,255,0.05)">
-                  <p class="text-[8px] text-slate-300 mono">Sirkülasyon</p>
+                  <p class="text-[8px] text-slate-600 mono">Sirkülasyon</p>
                   <p id="cfd_circ" class="text-xs font-black mono text-slate-200">--</p>
                 </div>
               </div>
@@ -1664,6 +1703,7 @@
       </div>
     </div>
     </div> <!-- end #pageCFD -->
+
 
 
 
@@ -3627,19 +3667,14 @@ document.getElementById('tabUygunluk').onclick = () => {
         };
 
         // ============================================================
-        // ============================================================
         // CFD ENGINE v2 — Loaded from external modules
         // ============================================================
         // (Engine, Renderer, and UI Controller loaded via <script> tags)
 
         // Tab switching — CFD tab is handled in cfd-ui.js
         // Other tab switches need to stop CFD
-        // CFD stop on tab switch is handled in cfd-ui.js
+        ['tabMixing','tabDispersion','tabUygunluk'].forEach(id => {
+            const existing = document.getElementById(id);
+            if (existing) existing.addEventListener('click', () => { if (typeof CFD !== 'undefined' && CFD.running) cfdStopSim(); });
+        });
 
-
-    </script>
-    <script src="cfd-engine.js"></script>
-    <script src="cfd-render.js"></script>
-    <script src="cfd-ui.js"></script>
-</body>
-</html>

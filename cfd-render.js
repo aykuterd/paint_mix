@@ -576,7 +576,12 @@ function cfdDrawVelProfile(canvas, p) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  const pad = { top: 10, bottom: 20, left: 40, right: 10 };
+
+  // Background
+  ctx.fillStyle = '#070c1a';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = { top: 36, bottom: 42, left: 70, right: 24 };
   const dW = W - pad.left - pad.right, dH = H - pad.top - pad.bottom;
 
   const iz_imp = Math.round((p.impH / p.H) * (CFD.NZ - 1));
@@ -589,36 +594,118 @@ function cfdDrawVelProfile(canvas, p) {
 
   const vmax = Math.max(...[...ur_vals, ...uz_vals].map(Math.abs), 1e-8);
   const xS = ir => pad.left + (ir / (CFD.NR - 1)) * dW;
-  const yS = v => pad.top + dH / 2 - (v / vmax) * (dH / 2 * 0.85);
+  const yS = v  => pad.top + dH / 2 - (v / vmax) * (dH / 2 * 0.88);
+  const yZero = pad.top + dH / 2;
 
-  // Zero line
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pad.left, pad.top + dH / 2); ctx.lineTo(pad.left + dW, pad.top + dH / 2); ctx.stroke();
+  // Grid yatay çizgiler (25%, 50%, 75% seviyeleri)
+  [0.5, -0.5, 1, -1].forEach(frac => {
+    const yy = yZero - frac * (dH / 2 * 0.88);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(pad.left, yy); ctx.lineTo(pad.left + dW, yy); ctx.stroke();
+    ctx.setLineDash([]);
+  });
 
-  // uz profile
-  ctx.beginPath(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+  // Grid dikey çizgiler (T/4 ve T/2)
+  [0.25, 0.5, 0.75].forEach(frac => {
+    const xx = pad.left + frac * dW;
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.moveTo(xx, pad.top); ctx.lineTo(xx, pad.top + dH); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // Sıfır çizgisi
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(pad.left + dW, yZero); ctx.stroke();
+
+  // uz alanı dolgusu
+  ctx.beginPath();
+  uz_vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
+  ctx.lineTo(xS(CFD.NR - 1), yZero);
+  ctx.lineTo(xS(0), yZero);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,211,238,0.08)';
+  ctx.fill();
+
+  // uz eğrisi
+  ctx.beginPath(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5;
   uz_vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
   ctx.stroke();
 
-  // ur profile
-  ctx.beginPath(); ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+  // ur alanı dolgusu
+  ctx.beginPath();
+  ur_vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
+  ctx.lineTo(xS(CFD.NR - 1), yZero);
+  ctx.lineTo(xS(0), yZero);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(249,115,22,0.07)';
+  ctx.fill();
+
+  // ur eğrisi
+  ctx.beginPath(); ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 4]);
   ur_vals.forEach((v, ir) => ir === 0 ? ctx.moveTo(xS(ir), yS(v)) : ctx.lineTo(xS(ir), yS(v)));
   ctx.stroke(); ctx.setLineDash([]);
 
-  // Labels — daha okunaklı
-  ctx.fillStyle = '#22d3ee'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'left';
-  ctx.fillText('uz', 4, pad.top + 12);
-  ctx.fillStyle = '#64748b'; ctx.font = '8px JetBrains Mono';
-  ctx.fillText('eksenel ↕', 4, pad.top + 22);
-  ctx.fillStyle = '#f97316'; ctx.font = 'bold 10px JetBrains Mono';
-  ctx.fillText('ur', 4, pad.top + 36);
-  ctx.fillStyle = '#64748b'; ctx.font = '8px JetBrains Mono';
-  ctx.fillText('radyal ↔', 4, pad.top + 46);
-  // Alt eksen etiketleri
-  ctx.fillStyle = '#94a3b8'; ctx.textAlign = 'center';
-  ctx.fillText('r=0 (eksen)', pad.left + 2, H - 3);
-  ctx.fillText('r=T/2 (duvar)', pad.left + dW, H - 3);
+  // Çerçeve
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(pad.left, pad.top, dW, dH);
+
+  // Y ekseni etiketleri
+  ctx.font = 'bold 12px JetBrains Mono'; ctx.textAlign = 'right';
+  const yLabels = [
+    { frac:  1,   label: `+${vmax.toFixed(2)}`, color: '#94a3b8' },
+    { frac:  0.5, label: `+${(vmax*0.5).toFixed(2)}`, color: '#64748b' },
+    { frac:  0,   label: '0', color: '#e2e8f0' },
+    { frac: -0.5, label: `−${(vmax*0.5).toFixed(2)}`, color: '#64748b' },
+    { frac: -1,   label: `−${vmax.toFixed(2)}`, color: '#94a3b8' },
+  ];
+  yLabels.forEach(({ frac, label, color }) => {
+    const yy = yZero - frac * (dH / 2 * 0.88);
+    ctx.fillStyle = color;
+    ctx.fillText(label, pad.left - 8, yy + 4);
+  });
+
+  // Y ekseni başlık
+  ctx.save();
+  ctx.translate(14, pad.top + dH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = 'bold 12px JetBrains Mono';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'center';
+  ctx.fillText('Hız (m/s)', 0, 0);
+  ctx.restore();
+
+  // X ekseni etiketleri
+  ctx.font = 'bold 12px JetBrains Mono'; ctx.textAlign = 'center'; ctx.fillStyle = '#94a3b8';
+  ctx.fillText('r = 0', pad.left, H - 6);
+  ctx.fillText('T/4', pad.left + dW * 0.25, H - 6);
+  ctx.fillText('T/2', pad.left + dW * 0.5, H - 6);
+  ctx.fillText('3T/4', pad.left + dW * 0.75, H - 6);
+  ctx.fillText('r = T/2 (duvar)', pad.left + dW, H - 6);
+
+  // X ekseni alt başlık
+  ctx.font = '11px JetBrains Mono'; ctx.fillStyle = '#475569';
+  ctx.fillText('← Merkez (eksen)                                           Duvar →', pad.left + dW / 2, H - 24);
+
   // Başlık
-  ctx.fillStyle = '#94a3b8'; ctx.font = 'bold 8px JetBrains Mono';
-  ctx.fillText('Pervane Seviyesinde Hız Dağılımı', pad.left + dW / 2, pad.top - 2);
+  ctx.font = 'bold 13px JetBrains Mono'; ctx.fillStyle = '#cbd5e1'; ctx.textAlign = 'left';
+  ctx.fillText('Pervane Yüksekliği: ' + (p.impH !== undefined ? p.impH.toFixed(2) + ' m' : '-- m'), pad.left + 4, 20);
+
+  // Sağ üst — vmax kutusu
+  const vmaxLabel = `vmax = ${vmax.toFixed(3)} m/s`;
+  ctx.font = 'bold 12px JetBrains Mono';
+  const lw = ctx.measureText(vmaxLabel).width + 16;
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(pad.left + dW - lw, 6, lw, 22, 5);
+  ctx.fill();
+  ctx.fillStyle = '#fbbf24';
+  ctx.textAlign = 'right';
+  ctx.fillText(vmaxLabel, pad.left + dW - 8, 21);
 }
