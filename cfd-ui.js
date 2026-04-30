@@ -180,6 +180,21 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
         <span>0 dk</span><span style="color:${renk}80">45 dk kural</span><span>t₉₉</span>
       </div>
     </div>
+
+    <div class="flex items-start gap-3 p-3 rounded-xl mb-3" style="background:rgba(251,191,36,0.10);border:2px solid rgba(251,191,36,0.45)">
+      <span style="font-size:1.2rem;line-height:1;flex-shrink:0">⚠</span>
+      <div>
+        <p class="text-sm font-black mb-1" style="color:#fbbf24">Teorik alt sınır — gerçek üretim süresi farklı olabilir</p>
+        <p class="text-xs leading-relaxed" style="color:#e2e8f0">
+          Bu değer <b style="color:#fbbf24">sıvı-sıvı karışma için teorik alt sınırdır</b> (Nienow 1997, Grenville & Nienow 2004). Boyada renk homojenliğini belirleyen yalnızca sıvı karışması değildir; pigment topaklarının mekanik parçalanması, yüzey ıslanması ve rezinle etkileşim ek süre gerektirir.
+        </p>
+        <p class="text-xs leading-relaxed mt-1.5" style="color:#e2e8f0">
+          İyi geometrili tanklarda (D/T ≥ 0.35) sıvı çok daha kısa sürede karışır; bu değer düşük çıkabilir. Kötü geometride (D/T &lt; 0.25) sıvı karışması zaten yavaş olduğundan değer pratiğe daha yakın gelir.
+          <b style="color:#fbbf24">Üretim süresini belirlemek için kendi fabrika verinizi referans alın.</b>
+        </p>
+      </div>
+    </div>
+
     ${factors_html ? `
     <div class="mb-2">
       <p class="text-xs font-black uppercase tracking-wider mb-2" style="color:#64748b">Uygulanan Düzeltmeler</p>
