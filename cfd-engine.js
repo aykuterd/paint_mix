@@ -217,10 +217,10 @@ function cfdSolveStep(p) {
   // Effective diffusion — Nienow & Miles (1978), Grenville & Nienow (2004)
   const Re = p.rho * N * p.D * p.D / p.visc;
   const vtip = Math.PI * p.D * N;
-  // Türbülanslı viskozite: ν_t = 0.01 * vtip * D  (Nienow & Miles 1978)
-  // Skaler difüzivite: D_turb = ν_t / Sc_t, Sc_t=0.7
-  // Faktör: Re>1000'de tam etkili
-  const turb_factor = Math.min(1.0, Re / 1000);
+  // Geçiş rejimi düzeltmesi: Re < 10.000'de türbülanslı difüzyon sönümlenir.
+  // turb_factor = 1/(1 + Re_t/Re), Re_t = 6000 — Grenville & Nienow (2004)
+  // (Eski: Re/1000 → 0.5 at Re=500; Yeni: 1/(1+6000/500) = 0.077 at Re=500)
+  const turb_factor = 1.0 / (1.0 + 6000.0 / Math.max(Re, 1.0));
   const nu_t = 0.01 * vtip * p.D * turb_factor;
   const D_turb = nu_t / 0.7;
   // Moleküler difüzyon ihmal edilebilir (pigment ~1e-11 m²/s)
@@ -366,7 +366,23 @@ function cfdComputeMetrics(p) {
     const HT = p.H / p.T;
     const HT_factor = HT > 1.2 ? Math.pow(HT, 1.0) : 1.0;
 
-    t95_model = N_tur * t_devridaim * HT_factor; // saniye
+    const t95_base = N_tur * t_devridaim * HT_factor; // saniye (t95 tabanı)
+    // t99 dönüşümü: t99 = ln(100)/ln(20) × t95 = 1.54 × t95
+    // Renk kontrolü için t99 standardı — Grenville & Nienow (2004)
+    const T99_MULT = Math.log(100) / Math.log(20); // = 1.537
+    t95_model = t95_base * T99_MULT;
+
+    // Corrections objesi — UI açıklama kartı için
+    CFD._lastCorrections = {
+      N_tur,
+      Re_eff: Math.round(Re_eff),
+      HT_factor,
+      HT,
+      t99_mult: T99_MULT,
+      t_devridaim,
+      turb_factor_deff: 1.0 / (1.0 + 6000.0 / Math.max(p.rho * (p.rpm/60) * p.D * p.D / p.visc, 1.0)),
+      Re_bulk: Math.round(p.rho * (p.rpm/60) * p.D * p.D / p.visc),
+    };
   }
   return { mean, cov, homo, deadPct, t95_grenville: t95_model };
 }

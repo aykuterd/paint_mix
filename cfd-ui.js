@@ -77,7 +77,7 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
   document.getElementById('cfd_circ').innerText = Q > 0.001 ? (Vl / Q).toFixed(0) + ' s/tur' : '∞';
 
   document.getElementById('cfd_cov').innerText = cov.toFixed(3);
-  document.getElementById('cfd_cov').style.color = cov < 0.05 ? '#4ade80' : cov < 0.2 ? '#fbbf24' : '#f87171';
+  document.getElementById('cfd_cov').style.color = cov < 0.01 ? '#4ade80' : cov < 0.05 ? '#fbbf24' : '#f87171';
   document.getElementById('cfd_homo').innerText = homo.toFixed(0) + '%';
   document.getElementById('cfd_dead').innerText = deadPct.toFixed(1) + '%';
   document.getElementById('cfd_dead').style.color = deadPct < 5 ? '#4ade80' : deadPct < 20 ? '#fbbf24' : '#f87171';
@@ -99,44 +99,96 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
   const KURAL_DK = 45;
   let yeterlilik_html = '';
   if (t95_grenville !== null) {
-    const t95_dk = t95_grenville / 60;
+    const t99_dk = t95_grenville / 60; // artık t99 değeri
     let renk, ikon, mesaj;
-    if (t95_dk <= KURAL_DK * 0.60) {
+    if (t99_dk <= KURAL_DK * 0.60) {
       renk = '#22d3ee'; ikon = '⚡';
-      mesaj = `Bu setup fazla güçlü — ${t95_dk.toFixed(0)} dk'da homojen olur. Daha küçük tank veya düşük RPM düşünün.`;
-    } else if (t95_dk <= KURAL_DK * 0.90) {
+      mesaj = `Bu setup güçlü — ${t99_dk.toFixed(0)} dk'da renk homojenliği sağlanır. Daha düşük RPM denenebilir.`;
+    } else if (t99_dk <= KURAL_DK * 0.90) {
       renk = '#4ade80'; ikon = '✅';
-      mesaj = `45 dk yeterli, ${Math.round(KURAL_DK - t95_dk)} dk güvenlik payı var.`;
-    } else if (t95_dk <= KURAL_DK * 1.10) {
+      mesaj = `45 dk yeterli, ${Math.round(KURAL_DK - t99_dk)} dk güvenlik payı var.`;
+    } else if (t99_dk <= KURAL_DK * 1.10) {
       renk = '#4ade80'; ikon = '✅';
-      mesaj = `45 dk ile homojen olur (t₉₅ ≈ ${t95_dk.toFixed(0)} dk).`;
-    } else if (t95_dk <= KURAL_DK * 1.35) {
+      mesaj = `45 dk ile renk homojenliği sağlanır (t₉₉ ≈ ${t99_dk.toFixed(0)} dk).`;
+    } else if (t99_dk <= KURAL_DK * 1.35) {
       renk = '#fbbf24'; ikon = '⚠';
-      mesaj = `Sınırda — 45 dk yetmeyebilir. Numune alt/orta/üstten alın.`;
+      mesaj = `Sınırda — 45 dk yetmeyebilir. Alt/orta/üst numune alınmasını öneririz.`;
     } else {
       renk = '#f87171'; ikon = '❌';
-      mesaj = `45 dk YETMİYOR (t₉₅ = ${t95_dk.toFixed(0)} dk). Bu boya bu setup'ta homojen olmaz.`;
+      mesaj = `45 dk YETMİYOR (t₉₉ = ${t99_dk.toFixed(0)} dk). RPM artırın veya daha büyük pervane kullanın.`;
     }
-    const barPct = Math.min(100, (KURAL_DK / t95_dk) * 100).toFixed(0);
+    const barPct = Math.min(100, (KURAL_DK / t99_dk) * 100).toFixed(0);
+
+    // Düzeltme faktörleri
+    const cor = CFD._lastCorrections || {};
+    let factors_html = '';
+    if (cor.N_tur !== undefined) {
+      // 1) t99 eşiği — her zaman göster
+      factors_html += `
+        <div class="flex items-start gap-2 p-2 rounded-lg" style="background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.18)">
+          <span class="text-sm font-black mono flex-shrink-0" style="color:#22d3ee">×${cor.t99_mult.toFixed(2)}</span>
+          <div>
+            <p class="text-xs font-black" style="color:#22d3ee">t₉₉ Eşiği (CoV &lt; 0.01)</p>
+            <p class="text-xs leading-relaxed" style="color:#94a3b8">Renk kontrolü için t₉₅ yetersiz; %99 homojenlik gerekir. <b style="color:#cbd5e1">t₉₉ = ln(100)/ln(20) × t₉₅</b> — Grenville &amp; Nienow (2004)</p>
+          </div>
+        </div>`;
+      // 2) Devirdaim sayısı (Re_eff bazlı) — her zaman göster
+      factors_html += `
+        <div class="flex items-start gap-2 p-2 rounded-lg" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.18)">
+          <span class="text-sm font-black mono flex-shrink-0" style="color:#fbbf24">×${cor.N_tur}</span>
+          <div>
+            <p class="text-xs font-black" style="color:#fbbf24">Devirdaim Sayısı (Re_eff = ${cor.Re_eff})</p>
+            <p class="text-xs leading-relaxed" style="color:#94a3b8">Metzner-Otto efektif viskozite ile hesaplanan Re_eff'e göre %99 homojenlik için kaç tam sirkülasyon gerektiğini belirtir. <b style="color:#cbd5e1">Nienow (1997) Tablo 2.</b></p>
+          </div>
+        </div>`;
+      // 3) H/T geometri — sadece H/T > 1.2'de göster
+      if (cor.HT_factor > 1.01) {
+        factors_html += `
+        <div class="flex items-start gap-2 p-2 rounded-lg" style="background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.18)">
+          <span class="text-sm font-black mono flex-shrink-0" style="color:#c084fc">×${cor.HT_factor.toFixed(2)}</span>
+          <div>
+            <p class="text-xs font-black" style="color:#c084fc">H/T Geometri Düzeltmesi (H/T = ${cor.HT.toFixed(2)})</p>
+            <p class="text-xs leading-relaxed" style="color:#94a3b8">Derin tanklarda (H/T &gt; 1.2) karışma süresi uzar; pervane daha az hacmi dolaşıma katıyor. <b style="color:#cbd5e1">Rodgers et al. (2011), Chem. Eng. Sci.</b></p>
+          </div>
+        </div>`;
+      }
+      // 4) D_eff geçiş rejimi — Re < 10000 ise göster
+      if (cor.Re_bulk < 10000) {
+        const f_label = cor.turb_factor_deff < 0.5 ? (cor.turb_factor_deff * 100).toFixed(0) + '% türbülans' : (cor.turb_factor_deff).toFixed(2);
+        factors_html += `
+        <div class="flex items-start gap-2 p-2 rounded-lg" style="background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.18)">
+          <span class="text-sm font-black mono flex-shrink-0" style="color:#f97316">${f_label}</span>
+          <div>
+            <p class="text-xs font-black" style="color:#f97316">Simülasyon: Geçiş Rejimi D_eff (Re = ${cor.Re_bulk})</p>
+            <p class="text-xs leading-relaxed" style="color:#94a3b8">Re &lt; 10,000'de türbülanslı difüzyon sönümlenir; simülasyondaki D_eff <b style="color:#cbd5e1">D_turb / (1 + 6000/Re)</b> formülüyle düşürüldü. Bu sayede PDE'nin kendisi daha yavaş karışım hesaplar. <b style="color:#cbd5e1">Grenville &amp; Nienow (2004).</b></p>
+          </div>
+        </div>`;
+      }
+    }
+
     yeterlilik_html = `
-    <div class="p-3 rounded-xl mb-2" style="background:rgba(0,0,0,0.35);border:1px solid ${renk}35">
+    <div class="p-3 rounded-xl mb-3" style="background:rgba(0,0,0,0.35);border:1px solid ${renk}40">
       <div class="flex justify-between items-center mb-1.5">
-        <span class="text-[9px] font-black uppercase tracking-wider" style="color:${renk}">Homojenlik Kontrolü ${ikon}</span>
-        <span class="mono font-black text-xl" style="color:${renk}">${t95_dk.toFixed(0)} dk</span>
+        <span class="text-xs font-black uppercase tracking-wider" style="color:${renk}">Renk Homojenliği (t₉₉) ${ikon}</span>
+        <span class="mono font-black text-2xl" style="color:${renk}">${t99_dk.toFixed(0)} dk</span>
       </div>
-      <p class="text-[9px] leading-relaxed mb-2" style="color:#94a3b8">${mesaj}</p>
-      <div class="h-1.5 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08)">
+      <p class="text-xs leading-relaxed mb-2" style="color:#94a3b8">${mesaj}</p>
+      <div class="h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.08)">
         <div style="width:${barPct}%;height:100%;background:${renk};border-radius:99px;transition:width 0.5s"></div>
       </div>
-      <div class="flex justify-between text-[8px] mt-0.5 mono" style="color:#94a3b8">
-        <span>0 dk</span><span style="color:${renk}60">45 dk kural</span><span>t₉₅</span>
+      <div class="flex justify-between text-xs mt-1 mono" style="color:#64748b">
+        <span>0 dk</span><span style="color:${renk}80">45 dk kural</span><span>t₉₉</span>
       </div>
     </div>
-    <p class="text-[8px] italic mb-2" style="color:#94a3b8">Nienow (1997) Turnover Modeli · Re_eff bazlı · viskoz boya için kalibre</p>
-    <div class="p-2 rounded-lg mb-2" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
-      <p class="text-[8px] font-black mb-1" style="color:#fbbf24">ℹ t₉₅ Fizik Formülü vs Simülasyon CoV</p>
-      <p class="text-[8px] leading-relaxed" style="color:#94a3b8"><span style="color:#4ade80">t₉₅ (dk)</span> → Nienow turnover modeli. Viskozite, RPM, D, tank geometrisinden hesaplanır. Gerçek karışma süresini tahmin eder.</p>
-      <p class="text-[8px] leading-relaxed mt-1" style="color:#94a3b8"><span style="color:#22d3ee">CoV / Homojenlik (%)</span> → Tracer enjekte edildikten sonra simülasyonda izlenir. Konsantrasyonun ne kadar eşitlendiğini gösterir. Simülasyon zamanı (s) gerçek dakikayla birebir örtüşmez.</p>
+    ${factors_html ? `
+    <div class="mb-2">
+      <p class="text-xs font-black uppercase tracking-wider mb-2" style="color:#64748b">Uygulanan Düzeltmeler</p>
+      <div class="space-y-1.5">${factors_html}</div>
+    </div>` : ''}
+    <div class="p-2 rounded-lg mt-2" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">
+      <p class="text-xs font-black mb-1" style="color:#fbbf24">t₉₉ Formülü vs Simülasyon CoV</p>
+      <p class="text-xs leading-relaxed" style="color:#94a3b8"><span style="color:#4ade80">t₉₉ (dk)</span> → Nienow (1997) turnover modeli; viskozite, RPM, D ve geometriden hesaplanır. Gerçek süreye yakın tahmin.</p>
+      <p class="text-xs leading-relaxed mt-1" style="color:#94a3b8"><span style="color:#22d3ee">CoV / Homojenlik (%)</span> → Tracer enjekte edilince simülasyonda izlenir. CoV &lt; 0.01 = t₉₉ anı. Simülasyon saniyesi gerçek dakikayla birebir örtüşmez.</p>
     </div>`;
   }
 
@@ -217,8 +269,8 @@ function cfdLoop() {
       probeVals.forEach((v, i) => {
         CFD.probeData[i].push({ t: CFD.time, v });
       });
-      // Check t95
-      if (CFD.t95 === null && metrics.cov < 0.05) {
+      // Check t99 (renk kontrolü standardı — CoV < 0.01)
+      if (CFD.t95 === null && metrics.cov < 0.01) {
         CFD.t95 = CFD.time;
       }
     }

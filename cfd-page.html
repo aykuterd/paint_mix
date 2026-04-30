@@ -169,7 +169,7 @@
               <i class="fas fa-syringe text-xs"></i>
               <h3 class="font-black uppercase text-xs tracking-widest">Tracer Enjeksiyonu</h3>
             </div>
-            <p class="text-[9px] text-slate-300 leading-relaxed mb-3">t₉₅ ölçümü için tracer blob enjekte edin. CoV &lt; 0.05 → %95 homojenlik.</p>
+            <p class="text-[9px] text-slate-300 leading-relaxed mb-3">t₉₉ ölçümü için tracer blob enjekte edin. CoV &lt; 0.01 → %99 renk homojenliği.</p>
             <div class="mb-2">
               <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Enjeksiyon Noktası</label>
               <select id="cfd_tracerPos" class="input-dark">
@@ -305,7 +305,7 @@
             </div>
             <div class="flex justify-between mt-1.5 text-[9px] mono text-slate-600">
               <span>0% (karışmamış)</span>
-              <span>t₉₅ hedef: CoV &lt; 0.05</span>
+              <span>t₉₉ hedef: CoV &lt; 0.01</span>
               <span>100% (homojen)</span>
             </div>
           </div>
@@ -329,11 +329,11 @@
                 <b style="color:#fbbf24">CoV = σ(C)/μ(C)</b> — tank içindeki konsantrasyonun standart sapmasının ortalamasına oranı; karışımın ne kadar dengesiz olduğunu gösteren boyutsuz sayı. Tracer enjekte edildiği an her noktanın değeri çok farklı (CoV ≈ 1, dengesiz); zamanla pervane sıvıyı dolaştırıp her hücre aynı değere yaklaşınca CoV → 0 (homojen).
               </p>
               <p class="text-xs mt-1.5" style="color:#cbd5e1">
-                Renkli eğriler (P1–P4) tankın 4 farklı noktasındaki konsantrasyonun zamanla değişimini, cyan eğri ise tüm tank için CoV'yi gösterir. <b style="color:#4ade80">CoV &lt; 0.05</b>'a düşülen ana <b style="color:#4ade80">t₉₅</b> denir; bu noktada karışım %95 homojen kabul edilir (endüstri standardı). Üstteki <b>%</b> bar bunu ters skaladan görselleştirir: <b style="color:#4ade80">%100 = tankın her noktasında aynı konsantrasyon = mükemmel homojen karışım</b>.
+                Renkli eğriler (P1–P4) tankın 4 farklı noktasındaki konsantrasyonun zamanla değişimini, cyan eğri ise tüm tank için CoV'yi gösterir. <b style="color:#4ade80">CoV &lt; 0.01</b>'e düşülen an <b style="color:#4ade80">t₉₉</b> denir; bu noktada karışım %99 homojen kabul edilir — renk kontrolü için gerekli standart (Grenville &amp; Nienow 2004). Üstteki <b>%</b> bar bunu ters skaladan görselleştirir: <b style="color:#4ade80">%100 = tankın her noktasında aynı konsantrasyon = mükemmel homojen karışım</b>.
               </p>
             </div>
             <canvas id="cfd_covGraph" width="600" height="160" style="width:100%;background:transparent;border-radius:8px"></canvas>
-            <p class="text-[9px] text-slate-500 mt-1">Prob noktaları yandaki kesitte ○ ile gösterilir. t₉₅ = CoV'nin 0.05 altına düştüğü an.</p>
+            <p class="text-[9px] text-slate-500 mt-1">Prob noktaları yandaki kesitte ○ ile gösterilir. t₉₉ = CoV'nin 0.01 altına düştüğü an (renk homojenliği standardı).</p>
           </div>
         </div>
 
