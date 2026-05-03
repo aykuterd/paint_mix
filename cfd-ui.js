@@ -450,6 +450,7 @@ function cfdBindEvents() {
 
   // Tab switching — CFD tab
   document.getElementById('tabCFD').onclick = () => {
+    window._activePageTab = 'cfd';
     document.getElementById('pageMixing').style.display = 'none';
     document.getElementById('pageDispersion').style.display = 'none';
     document.getElementById('pageUygunluk').style.display = 'none';

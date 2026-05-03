@@ -210,6 +210,47 @@
             border: 1px solid rgba(99,102,241,0.2);
         }
 
+        /* ── Tooltip System ─────────────────────────────── */
+        .dp-tip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px; height: 13px;
+            border-radius: 50%;
+            background: rgba(100,116,139,0.22);
+            color: #64748b;
+            font-size: 8px;
+            font-style: normal;
+            font-weight: 800;
+            cursor: help;
+            vertical-align: middle;
+            margin-left: 3px;
+            flex-shrink: 0;
+            transition: background 0.15s, color 0.15s;
+            user-select: none;
+        }
+        .dp-tip:hover { background: rgba(139,92,246,0.35); color: #c4b5fd; }
+
+        #dp_tooltip_box {
+            position: fixed;
+            z-index: 99999;
+            background: #0f172a;
+            color: #cbd5e1;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            width: 290px;
+            max-width: 92vw;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            border: 1px solid rgba(148,163,184,0.2);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.7);
+            display: none;
+            white-space: pre-wrap;
+        }
+
         /* Help Modal Tabs */
         .help-tab {
             background: rgba(255,255,255,0.04);
@@ -283,7 +324,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-black leading-none tracking-tight mono">BOYA KARIŞTIRMA SİMÜLATÖRÜ</h1>
-                <p class="text-xs text-slate-500 font-medium mt-0.5">Endüstriyel Karıştırıcı Simülasyonu v4.0 · Grenville-Nienow (2004)</p>
+                <p class="text-xs text-slate-500 font-medium mt-0.5">Pervane Seçimi · Njs · t95/t99 · CFD · Dispersiyon · Tank Analizi</p>
             </div>
         </div>
         <div class="flex items-center gap-3">
@@ -310,7 +351,7 @@
     <nav class="max-w-[1600px] mx-auto mb-5">
         <div class="flex gap-1 p-1 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:inline-flex">
             <button id="tabMixing" class="page-tab active-page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
-                <i class="fas fa-rotate text-xs"></i> Karıştırma Simülatörü
+                <i class="fas fa-rotate text-xs"></i> Pervane & Süspansiyon
             </button>
             <button id="tabDispersion" class="page-tab px-5 py-2.5 rounded-lg text-sm font-black transition flex items-center gap-2">
                 <i class="fas fa-atom text-xs"></i> Dispersiyon / Boncuklu Değirmen
@@ -334,6 +375,18 @@
                 <div class="flex items-center gap-2 mb-5 text-orange-400">
                     <i class="fas fa-sliders text-sm"></i>
                     <h2 class="font-black uppercase text-xs tracking-widest">Kontrol Paneli</h2>
+                </div>
+
+                <!-- Tank Seçici -->
+                <div class="mb-5 pb-5 border-b border-slate-800/80">
+                    <div class="flex items-center gap-2 mb-2 text-cyan-400">
+                        <i class="fas fa-database text-xs"></i>
+                        <span class="text-[9px] font-black uppercase tracking-wider">Fabrika Tankından Seç</span>
+                    </div>
+                    <select id="mix_tankSec" class="input-dark mb-2">
+                        <option value="">— Manuel Giriş (özel değerler) —</option>
+                    </select>
+                    <div id="mix_tankSecBilgi" class="hidden text-[9px] text-slate-400 leading-relaxed p-2 rounded-lg" style="background:rgba(0,0,0,0.3)"></div>
                 </div>
 
                 <div class="space-y-5">
@@ -745,12 +798,14 @@
     <div id="pageDispersion" style="display:none">
     <div class="max-w-[1600px] mx-auto">
 
+<!-- YEDEK BAŞLANGICI -->
+<!--
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-        <!-- Sol: Parametreler -->
+        <!- Sol: Parametreler ->
         <div class="lg:col-span-3 space-y-4 sidebar-scroll pr-1">
 
-          <!-- Pigment ve Hedef -->
+          <!- Pigment ve Hedef ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-4" style="color:#a78bfa">
               <i class="fas fa-circle-nodes text-sm"></i>
@@ -759,41 +814,64 @@
             <div class="space-y-3">
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pigment Tipi</label>
-                <select id="dp_pigType" class="input-dark">
-                  <option value="tio2">TiO₂ (Rutil) — Wi=15 kWh/t</option>
-                  <option value="fe2o3">Fe₂O₃ (Demir Oksit) — Wi=12 kWh/t</option>
-                  <option value="caco3">CaCO₃ (Kalsit) — Wi=8 kWh/t</option>
-                  <option value="organic">Organik Pigment (Ftalo, QB) — Wi=5 kWh/t</option>
-                  <option value="cb">Karbon Siyahı — Wi=3 kWh/t</option>
-                  <option value="baso4">BaSO₄ — Wi=10 kWh/t</option>
+                <select id="dp_pigType_OLD" class="input-dark">
+                  <optgroup label="── İnorganik: TiO₂">
+                    <option value="tio2">TiO₂ Rutil — Wi=15 kWh/t</option>
+                    <option value="tio2_anatase">TiO₂ Anastaz — Wi=12 kWh/t</option>
+                  </optgroup>
+                  <optgroup label="── İnorganik: Demir Oksit">
+                    <option value="fe2o3">Fe₂O₃ Kırmızı — Wi=12 kWh/t</option>
+                    <option value="fe2o3_yellow">Fe₂O₃ Sarı (FeOOH) — Wi=10 kWh/t</option>
+                    <option value="fe2o3_transp">Fe₂O₃ Transparan — Wi=9 kWh/t</option>
+                  </optgroup>
+                  <optgroup label="── İnorganik: Yüksek Perf.">
+                    <option value="bivo4">Bizmut Vanadat (PY184) — Wi=13 kWh/t</option>
+                    <option value="chrome_yellow">Krom Sarı (PY34) ⚠️ — Wi=11 kWh/t</option>
+                    <option value="molibdat">Molibdat Oranj (PO21) ⚠️ — Wi=11 kWh/t</option>
+                  </optgroup>
+                  <optgroup label="── İnorganik: Dolgu">
+                    <option value="caco3">CaCO₃ Kalsit — Wi=8 kWh/t</option>
+                    <option value="baso4">BaSO₄ — Wi=10 kWh/t</option>
+                  </optgroup>
+                  <optgroup label="── Organik">
+                    <option value="phtalo_blue">Ftalo Mavi (PB15) — Wi=7 kWh/t</option>
+                    <option value="phtalo_green">Ftalo Yeşil (PG7) — Wi=7 kWh/t</option>
+                    <option value="dpp_red">DPP Kırmızı (PR254) — Wi=6 kWh/t</option>
+                    <option value="dpp_orange">DPP Oranj (PO73) — Wi=6 kWh/t</option>
+                    <option value="quinacridone">Kinakridon (PV19) — Wi=5 kWh/t</option>
+                    <option value="organic">Organik (Genel) — Wi=5 kWh/t</option>
+                  </optgroup>
+                  <optgroup label="── Karbon">
+                    <option value="cb">Karbon Siyahı — Wi=3 kWh/t</option>
+                  </optgroup>
                 </select>
                 <p class="text-[9px] text-slate-300 mt-1 leading-relaxed">Bond Work Index (Wi): pigmentin kırılma direnci. Yüksek Wi → daha fazla enerji gerektirir. Referans: Kwade (1999), PCI Magazine (2011)</p>
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Besleme d₅₀ (µm)</label>
-                  <input type="number" id="dp_d50feed" value="5" step="0.5" min="0.1" class="input-dark">
+                  <input type="number" id="dp_d50feed_OLD" value="5" step="0.5" min="0.1" class="input-dark">
                   <p class="text-[9px] text-slate-300 mt-1">Değirmen girişindeki ortalama tane boyutu</p>
                 </div>
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Hedef d₅₀ (µm)</label>
-                  <input type="number" id="dp_d50target" value="0.3" step="0.05" min="0.01" class="input-dark">
+                  <input type="number" id="dp_d50target_OLD" value="0.3" step="0.05" min="0.01" class="input-dark">
                   <p class="text-[9px] text-slate-300 mt-1">İstenen ürün tane boyutu</p>
                 </div>
               </div>
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pasta/Slurry Miktarı (kg)</label>
-                <input type="number" id="dp_batchKg" value="20" step="5" min="1" class="input-dark">
+                <input type="number" id="dp_batchKg_OLD" value="20" step="5" min="1" class="input-dark">
               </div>
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pigment Konsantrasyonu (wt%)</label>
-                <input type="number" id="dp_solidPct" value="30" step="5" min="5" max="70" class="input-dark">
+                <input type="number" id="dp_solidPct_OLD" value="30" step="5" min="5" max="70" class="input-dark">
                 <p class="text-[9px] text-slate-300 mt-1">Optimum: %25–45. Yüksek konsantrasyon viskoziteyi artırır, SI'yi düşürür.</p>
               </div>
             </div>
           </div>
 
-          <!-- Bead Mill Parametreleri -->
+          <!- Bead Mill Parametreleri ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-4" style="color:#fb923c">
               <i class="fas fa-cogs text-sm"></i>
@@ -802,7 +880,7 @@
             <div class="space-y-3">
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Değirmen Tipi</label>
-                <select id="dp_millType" class="input-dark">
+                <select id="dp_millType_OLD" class="input-dark">
                   <option value="horizontal">Yatay Diskli (Horizontal) — yüksek verim</option>
                   <option value="vertical">Dikey (Vertical) — orta verim</option>
                   <option value="pin">Pin Mill — yüksek enerji yoğunluğu</option>
@@ -811,7 +889,7 @@
               </div>
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Boncuk Materyali</label>
-                <select id="dp_beadMat" class="input-dark">
+                <select id="dp_beadMat_OLD" class="input-dark">
                   <option value="zro2">ZrO₂ / YTZ (ρ=6050 kg/m³) — önerilen</option>
                   <option value="glass">Cam (ρ=2500 kg/m³) — ekonomik</option>
                   <option value="alumina">Al₂O₃ Alümina (ρ=3900 kg/m³)</option>
@@ -822,21 +900,21 @@
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Boncuk Çapı d_b (mm)</label>
-                  <input type="number" id="dp_beadSize" value="0.8" step="0.1" min="0.1" max="5" class="input-dark">
+                  <input type="number" id="dp_beadSize_OLD" value="0.8" step="0.1" min="0.1" max="5" class="input-dark">
                   <p class="text-[9px] text-slate-300 mt-1">Küçük boncuk → yüksek SN, düşük SI. d_b ≤ 3×d_feed önerilir.</p>
                 </div>
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Boncuk Dolum (φ%)</label>
-                  <input type="number" id="dp_beadFill" value="70" step="5" min="50" max="85" class="input-dark">
+                  <input type="number" id="dp_beadFill_OLD" value="70" step="5" min="50" max="85" class="input-dark">
                   <p class="text-[9px] text-slate-300 mt-1">Optimum: %70–80. (Kwade 2007)</p>
                 </div>
               </div>
               <div>
                 <div class="flex justify-between mb-1">
                   <label class="text-[9px] font-black text-slate-500 uppercase">Rotor Uç Hızı v_t (m/s)</label>
-                  <span id="dp_tipLabel" class="text-xs font-black mono" style="color:#a78bfa">9.2 m/s</span>
+                  <span id="dp_tipLabel_OLD" class="text-xs font-black mono" style="color:#a78bfa">9.2 m/s</span>
                 </div>
-                <input type="range" id="dp_tipSpeed" min="3" max="25" step="0.2" value="9.2" class="w-full" style="accent-color:#a855f7">
+                <input type="range" id="dp_tipSpeed_OLD" min="3" max="25" step="0.2" value="9.2" class="w-full" style="accent-color:#a855f7">
                 <div class="flex justify-between mt-0.5">
                   <span class="text-[9px] text-slate-600 mono">3 m/s</span>
                   <span class="text-[9px] text-slate-600 mono">Optimum: 8–15 m/s</span>
@@ -846,22 +924,22 @@
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Değirmen Hacmi (L)</label>
-                  <input type="number" id="dp_millVol" value="1.0" step="0.5" min="0.1" class="input-dark">
+                  <input type="number" id="dp_millVol_OLD" value="1.0" step="0.5" min="0.1" class="input-dark">
                 </div>
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Motor Gücü (kW)</label>
-                  <input type="number" id="dp_motorKw" value="3.0" step="0.5" min="0.1" class="input-dark">
+                  <input type="number" id="dp_motorKw_OLD" value="3.0" step="0.5" min="0.1" class="input-dark">
                 </div>
               </div>
               <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Akış Hızı (L/dk)</label>
-                <input type="number" id="dp_flowRate" value="5.0" step="0.5" min="0.1" class="input-dark">
+                <input type="number" id="dp_flowRate_OLD" value="5.0" step="0.5" min="0.1" class="input-dark">
                 <p class="text-[9px] text-slate-300 mt-1">Sürekli modda debi. Batch modda sonsuz kabul edilir.</p>
               </div>
             </div>
           </div>
 
-          <!-- Literatür Referansı -->
+          <!- Literatür Referansı ->
           <div class="glass-card p-4">
             <div class="flex items-center gap-2 mb-3 text-blue-400">
               <i class="fas fa-flask text-xs"></i>
@@ -886,112 +964,112 @@
             </div>
           </div>
 
-          <button id="dp_calcBtn" class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest text-white flex items-center justify-center gap-2 shadow-xl transition" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
+          <button id="dp_calcBtn_OLD" class="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-widest text-white flex items-center justify-center gap-2 shadow-xl transition" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
             <i class="fas fa-calculator"></i> Hesapla
           </button>
         </div>
 
-        <!-- Orta: Sonuçlar ve Grafik -->
+        <!- Orta: Sonuçlar ve Grafik ->
         <div class="lg:col-span-5 space-y-4">
 
-          <!-- Ana Sonuç Kartları -->
+          <!- Ana Sonuç Kartları ->
           <div class="glass-card p-5">
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-2" style="color:#a78bfa">
                 <i class="fas fa-microchip text-sm"></i>
                 <h3 class="font-black uppercase text-xs tracking-widest">Hesap Sonuçları</h3>
               </div>
-              <button id="dp_resetBtn" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+              <button id="dp_resetBtn_OLD" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
                 <i class="fas fa-rotate-right text-[10px]"></i>
               </button>
             </div>
 
-            <!-- Stres Yoğunluğu -->
+            <!- Stres Yoğunluğu ->
             <div class="rounded-xl p-4 border text-center mb-4" style="background:#0a0f1e;border-color:rgba(168,85,247,0.2)">
               <p class="text-[9px] font-black text-slate-500 uppercase mb-1 tracking-wider">Stres Yoğunluğu SI</p>
-              <p id="dp_siVal" class="text-2xl font-black mono" style="color:#a855f7">-- Nm</p>
-              <p id="dp_siStatus" class="text-[10px] mt-1 italic font-bold text-slate-400">--</p>
+              <p id="dp_siVal_OLD" class="text-2xl font-black mono" style="color:#a855f7">-- Nm</p>
+              <p id="dp_siStatus_OLD" class="text-[10px] mt-1 italic font-bold text-slate-400">--</p>
               <p class="text-[8px] text-slate-600 mt-1">Kwade (1997): SI = ρ_b · d_b³ · v_t²</p>
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-4">
               <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
                 <p class="metric-label text-orange-400">Spesifik Enerji (Em)</p>
-                <p id="dp_emVal" class="text-xl font-black mono text-orange-400 mt-0.5">-- kWh/t</p>
+                <p id="dp_emVal_OLD" class="text-xl font-black mono text-orange-400 mt-0.5">-- kWh/t</p>
                 <p class="text-[9px] text-slate-500 mt-1">Bond 3. Yasa × η=0.4</p>
               </div>
               <div class="rounded-xl p-3 border" style="background:#0d1628;border-color:rgba(255,255,255,0.05)">
                 <p class="metric-label text-yellow-400">Motor Gücü Kontrolü</p>
-                <p id="dp_powerCheck" class="text-sm font-black mono text-yellow-400 mt-0.5">--</p>
+                <p id="dp_powerCheck_OLD" class="text-sm font-black mono text-yellow-400 mt-0.5">--</p>
                 <p class="text-[9px] text-slate-500 mt-1">Gerekli vs mevcut kW</p>
               </div>
             </div>
 
-            <!-- Süre ve Pas -->
+            <!- Süre ve Pas ->
             <div class="grid grid-cols-2 gap-3 mb-4">
               <div class="rounded-xl p-4 border" style="background:#0d1628;border-color:rgba(34,197,94,0.2)">
                 <p class="metric-label text-green-400">Toplam Öğütme Süresi</p>
-                <p id="dp_timeVal" class="text-2xl font-black mono text-green-400 mt-1">-- dk</p>
+                <p id="dp_timeVal_OLD" class="text-2xl font-black mono text-green-400 mt-1">-- dk</p>
                 <p class="text-[9px] text-slate-500 mt-1">t = Em × m / P_net</p>
               </div>
               <div class="rounded-xl p-4 border" style="background:#0d1628;border-color:rgba(249,115,22,0.2)">
                 <p class="metric-label text-orange-400">Gerekli Pas Sayısı</p>
-                <p id="dp_passVal" class="text-2xl font-black mono text-orange-400 mt-1">-- pas</p>
+                <p id="dp_passVal_OLD" class="text-2xl font-black mono text-orange-400 mt-1">-- pas</p>
                 <p class="text-[9px] text-slate-500 mt-1">Sürekli mod (continuous)</p>
               </div>
             </div>
 
-            <!-- Detay metrikleri -->
+            <!- Detay metrikleri ->
             <div class="grid grid-cols-3 gap-2">
               <div class="rounded-lg p-2 border" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.04)">
                 <p class="text-[8px] text-slate-600 mono uppercase">P_net</p>
-                <p id="dp_pnet" class="text-xs font-black mono text-slate-200">-- kW</p>
+                <p id="dp_pnet_OLD" class="text-xs font-black mono text-slate-200">-- kW</p>
               </div>
               <div class="rounded-lg p-2 border" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.04)">
                 <p class="text-[8px] text-slate-600 mono uppercase">Em/pas</p>
-                <p id="dp_emPerPass" class="text-xs font-black mono text-slate-200">-- kWh/t</p>
+                <p id="dp_emPerPass_OLD" class="text-xs font-black mono text-slate-200">-- kWh/t</p>
               </div>
               <div class="rounded-lg p-2 border" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.04)">
                 <p class="text-[8px] text-slate-600 mono uppercase">P/V değirmen</p>
-                <p id="dp_pvMill" class="text-xs font-black mono text-slate-200">-- kW/L</p>
+                <p id="dp_pvMill_OLD" class="text-xs font-black mono text-slate-200">-- kW/L</p>
               </div>
             </div>
           </div>
 
-          <!-- d50 Azalma Grafiği -->
+          <!- d50 Azalma Grafiği ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-3" style="color:#60a5fa">
               <i class="fas fa-chart-line text-sm"></i>
               <h3 class="font-black uppercase text-xs tracking-widest">d₅₀ — Pas Sayısı İlişkisi</h3>
               <span class="tag lit-badge ml-auto">Bond (1952)</span>
             </div>
-            <canvas id="dp_chart" height="200" style="width:100%;background:transparent"></canvas>
+            <canvas id="dp_chart_OLD" height="200" style="width:100%;background:transparent"></canvas>
             <p class="text-[9px] text-slate-500 mt-2">Her geçişte azalan d₅₀. Eğri Bond Üçüncü Yasası + bead mill η=0.4 ile hesaplanmıştır.</p>
           </div>
 
-          <!-- SI Analiz Grafiği -->
+          <!- SI Analiz Grafiği ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-3" style="color:#a78bfa">
               <i class="fas fa-chart-scatter text-sm"></i>
               <h3 class="font-black uppercase text-xs tracking-widest">Stres Yoğunluğu Analizi</h3>
               <span class="tag lit-badge ml-auto">Kwade (1999)</span>
             </div>
-            <canvas id="dp_siChart" height="160" style="width:100%;background:transparent"></canvas>
+            <canvas id="dp_siChart_OLD" height="160" style="width:100%;background:transparent"></canvas>
             <p class="text-[9px] text-slate-500 mt-2">Boncuk boyutuna göre SI eğrisi. Turuncu nokta: mevcut seçim. Yeşil bölge: pigment tipine göre optimum SI aralığı.</p>
           </div>
         </div>
 
-        <!-- Sağ: SI Değerlendirme + Öneriler -->
+        <!- Sağ: SI Değerlendirme + Öneriler ->
         <div class="lg:col-span-4 space-y-4">
 
-          <!-- SI Optimum Değerlendirmesi -->
+          <!- SI Optimum Değerlendirmesi ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-4" style="color:#a78bfa">
               <i class="fas fa-bullseye text-sm"></i>
               <h2 class="font-black uppercase text-xs tracking-widest">SI Optimum Analizi</h2>
             </div>
 
-            <div id="dp_siAnalysis" class="space-y-3">
+            <div id="dp_siAnalysis_OLD" class="space-y-3">
               <div class="text-center py-8 text-slate-600">
                 <i class="fas fa-calculator text-2xl mb-2 block"></i>
                 <p class="text-sm">Hesapla butonuna basın</p>
@@ -999,34 +1077,818 @@
             </div>
           </div>
 
-          <!-- Mühendis Önerisi -->
+          <!- Mühendis Önerisi ->
           <div class="glass-card p-5">
             <div class="flex items-center gap-2 mb-4 text-green-400">
               <i class="fas fa-lightbulb text-sm"></i>
               <h2 class="font-black uppercase text-xs tracking-widest">Mühendis Önerisi</h2>
             </div>
-            <div id="dp_recomm" class="text-[10px] text-slate-300 leading-relaxed space-y-2">
+            <div id="dp_recomm_OLD" class="text-[10px] text-slate-300 leading-relaxed space-y-2">
               <p class="text-slate-500 italic">Hesaplama sonrası öneriler burada görünecek.</p>
             </div>
           </div>
 
-          <!-- Boncuk Seçim Rehberi -->
+          <!- Boncuk Seçim Rehberi ->
           <div class="glass-card p-4">
             <div class="flex items-center gap-2 mb-3" style="color:#60a5fa">
               <i class="fas fa-circle-info text-xs"></i>
               <h3 class="font-black uppercase text-xs tracking-widest">Boncuk Boyutu Rehberi</h3>
             </div>
             <p class="text-[9px] text-slate-300 leading-relaxed mb-3">Literatür kuralı: d_boncuk ≤ 3 × d_feed (Kwade 1999). Daha küçük boncuk daha yüksek stres sayısı (SN) sağlar ancak SI düşer.</p>
-            <div id="dp_beadGuide" class="space-y-1"></div>
+            <div id="dp_beadGuide_OLD" class="space-y-1"></div>
           </div>
 
-          <!-- Karşılaştırmaya Ekle -->
-          <button id="dp_saveBtn" class="w-full py-3 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition" style="background:#7c3aed">
+          <!- Karşılaştırmaya Ekle ->
+          <button id="dp_saveBtn_OLD" class="w-full py-3 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition" style="background:#7c3aed">
             <i class="fas fa-plus-circle"></i> Karşılaştırmaya Ekle
           </button>
         </div>
 
       </div>
+-->
+<!-- YEDEK SONU -->
+
+    <div class="max-w-[1400px] mx-auto space-y-4 pb-12">
+
+      <!-- GLOBAL PİGMENT PANELİ -->
+      <div class="glass-card p-5" id="dp_globalPanel">
+        <div class="flex items-center gap-2 mb-4" style="color:#a78bfa">
+          <i class="fas fa-circle-nodes text-sm"></i>
+          <h2 class="font-black uppercase text-xs tracking-widest">Pigment & Hedef — Tüm Modüller Paylaşır</h2>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div class="md:col-span-2 lg:col-span-1">
+            <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Pigment Türü <span class="dp-tip" data-tip="Pigmentin cinsi — Bond Wi ve yoğunluk değerlerini otomatik doldurur. Bu veriler bead mill enerji (Em), stres yoğunluğu (SI) ve letdown çökelme hesaplarında kullanılır.">ⓘ</span></label>
+            <select id="dp_pigType" class="input-dark" onchange="dpOnGlobalChange(true)">
+              <optgroup label="── İnorganik: TiO₂">
+                <option value="tio2">TiO₂ Rutil — Wi=15</option>
+                <option value="tio2_anatase">TiO₂ Anastaz — Wi=12</option>
+              </optgroup>
+              <optgroup label="── İnorganik: Demir Oksit">
+                <option value="fe2o3">Fe₂O₃ Kırmızı — Wi=12</option>
+                <option value="fe2o3_yellow">Fe₂O₃ Sarı (FeOOH) — Wi=10</option>
+                <option value="fe2o3_transp">Fe₂O₃ Transparan — Wi=9</option>
+              </optgroup>
+              <optgroup label="── İnorganik: Yüksek Perf.">
+                <option value="bivo4">Bizmut Vanadat (PY184) — Wi=13</option>
+                <option value="chrome_yellow">Krom Sarı (PY34) ⚠️ — Wi=11</option>
+                <option value="molibdat">Molibdat Oranj (PO21) ⚠️ — Wi=11</option>
+              </optgroup>
+              <optgroup label="── İnorganik: Dolgu">
+                <option value="caco3">CaCO₃ Kalsit — Wi=8</option>
+                <option value="baso4">BaSO₄ — Wi=10</option>
+              </optgroup>
+              <optgroup label="── Organik">
+                <option value="phtalo_blue">Ftalo Mavi (PB15) — Wi=7</option>
+                <option value="phtalo_green">Ftalo Yeşil (PG7) — Wi=7</option>
+                <option value="dpp_red">DPP Kırmızı (PR254) — Wi=6</option>
+                <option value="dpp_orange">DPP Oranj (PO73) — Wi=6</option>
+                <option value="quinacridone">Kinakridon (PV19) — Wi=5</option>
+                <option value="organic">Organik (Genel) — Wi=5</option>
+              </optgroup>
+              <optgroup label="── Karbon">
+                <option value="cb">Karbon Siyahı — Wi=3</option>
+              </optgroup>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Bond Wi <span class="text-slate-500">(kWh/t)</span> <span class="dp-tip" data-tip="Bond Work Index — pigmentin mekanik kırılma direnci.\n\nFormülde: Em = Wi × 10 × (1/√d_hedef − 1/√d_feed) × η\n\nReferans değerler:\nBiVO₄=13 · TiO₂ Rutil=15 · Fe₂O₃=12\nCaCO₃=8 · Ftalo=7 · DPP=6 · CB=3\n\nYüksek Wi → daha fazla enerji gerekir.\nKaynak: Bond (1952), Kwade (1999)">ⓘ</span></label>
+            <input type="number" id="dp_wi" value="15" step="0.5" min="0.5" max="50" class="input-dark" oninput="dpOnGlobalChange()">
+            <p class="text-[9px] text-slate-500 mt-1">Seçimde oto-dolar, override edilebilir</p>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Pigment ρ <span class="text-slate-500">(kg/m³)</span> <span class="dp-tip" data-tip="Pigmentin kendi malzeme yoğunluğu — pastaninki değil.\n\nNeden önemli:\n• Ağır pigment → çökelme riski → yüksek Njs gerekir\n• Letdown floating hesabında Δρ = ρ_pigment − ρ_baz\n\nReferans:\nBiVO₄=6100 · TiO₂=4200\nFe₂O₃=4800 · CaCO₃=2700\nFtalo Mavi=1600 · CB=1800">ⓘ</span></label>
+            <input type="number" id="dp_pigRho" value="4200" step="100" min="100" max="10000" class="input-dark" oninput="dpOnGlobalChange()">
+            <p class="text-[9px] text-slate-500 mt-1">Seçimde oto-dolar, override edilebilir</p>
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Hedef d₅₀ <span class="text-slate-500">(µm)</span> <span class="dp-tip" data-tip="Bead mill ÇIKIŞINDA istenen ortalama partikül çapı.\n\nNe demek:\n• Pasta içindeki pigment partiküllerin ağırlıkça ortalaması\n• Pre-mixing (HSD) sonrası değil — bead mill sonrası nihai değer\n• Grindometre (Hegman) okumanızı µm'ye çevirin\n\nReferans:\n≥10µm = kaba · 1–5µm = endüstriyel\n0.2–0.5µm = yüksek kalite · <0.2µm = nano">ⓘ</span></label>
+            <input type="number" id="dp_d50target" value="0.3" step="0.05" min="0.01" class="input-dark" oninput="dpOnGlobalChange()">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Parti / Batch (kg)</label>
+            <input type="number" id="dp_batchKg" value="100" step="5" min="1" class="input-dark" oninput="dpOnGlobalChange()">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Pigment Kons. <span class="text-slate-500">(wt%)</span> <span class="dp-tip" data-tip="Slurry içindeki pigment ağırlık yüzdesi.\n\nOptimum: %25–45\n• Çok düşük → verim düşer, solvent/su israfı\n• Çok yüksek → viskozite artar, SI düşer, ısınma riski\n\nTipik:\nSu bazlı boya pastası: %30–50\nSolvent bazlı: %25–40\nNano pigment: %20–30">ⓘ</span></label>
+            <input type="number" id="dp_solidPct" value="35" step="5" min="5" max="70" class="input-dark" oninput="dpOnGlobalChange()">
+          </div>
+          <div>
+            <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Formülasyon Bazı</label>
+            <select id="dp_baseType" class="input-dark">
+              <option value="water">Su bazlı</option>
+              <option value="solvent">Solvent bazlı</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODÜL 1: HSD -->
+      <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(124,58,237,0.35)" id="dp_mod1">
+        <div class="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+             style="background:rgba(124,58,237,0.12)"
+             onclick="dpToggle('dp_mod1_body','dp_mod1_arrow')">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-black"
+                  style="background:#7c3aed">1</span>
+            <span class="font-black text-sm" style="color:#c4b5fd">HSD Pre-mixer — Islatma & Aglomerat Kırma</span>
+            <span class="text-[9px] text-slate-500">~40–50 kJ/mol enerji rejimi</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="dp_mod1_badge" class="text-[9px] px-2 py-0.5 rounded"
+                  style="background:rgba(100,116,139,0.2);color:#64748b">—</span>
+            <i id="dp_mod1_arrow" class="fas fa-chevron-down text-slate-500 transition-transform"></i>
+          </div>
+        </div>
+        <div id="dp_mod1_body" class="p-5" style="background:#0a0f1e">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Parametreler -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Parametreler</div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">HSD Bıçak Çapı — D (mm)</label>
+        <input type="number" id="hsd_bladeD" value="250" step="10" min="50" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Tipik aralık: 200–400 mm. Kural: D ≈ T/3 (tank çapının üçte biri)</p>
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Karıştırma Tankı Çapı — T (mm)</label>
+        <input type="number" id="hsd_tankD" value="750" step="25" min="100" class="input-dark">
+      </div>
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Dönme Hızı — N (RPM = devir/dak)</label>
+        <input type="number" id="hsd_rpm" value="1450" step="50" min="100" max="5000" class="input-dark">
+      </div>
+      <button onclick="hsdCalc()" class="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-widest text-white flex items-center justify-center gap-2 transition"
+              style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
+        <i class="fas fa-calculator"></i> HSD Hesapla
+      </button>
+    </div>
+  </div>
+
+  <!-- Sonuçlar -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Sonuçlar</div>
+    <div class="space-y-3">
+      <div class="rounded-xl p-4 text-center" style="background:#0d1628;border:1px solid rgba(124,58,237,0.2)">
+        <p class="text-[9px] text-slate-500 uppercase mb-1">Uç Hızı (TS)</p>
+        <p id="hsd_ts" class="text-2xl font-black mono" style="color:#a78bfa">—</p>
+        <p id="hsd_ts_status" class="text-[10px] mt-1 font-bold">—</p>
+        <p class="text-[8px] text-slate-600 mt-1">TS = π·D·N/60</p>
+      </div>
+      <div class="rounded-xl p-3 text-center" style="background:#0d1628;border:1px solid rgba(34,197,94,0.15)">
+        <p class="text-[9px] text-slate-500 uppercase mb-1">Blade/Tank Oranı</p>
+        <p id="hsd_ratio" class="text-xl font-black mono text-green-400">—</p>
+        <p id="hsd_ratio_status" class="text-[9px] mt-0.5">—</p>
+      </div>
+      <div class="rounded-xl p-3 text-center" style="background:#0d1628;border:1px solid rgba(255,255,255,0.05)">
+        <p class="text-[9px] text-slate-500 uppercase mb-1">Ön Karıştırma Süresi</p>
+        <p id="hsd_time" class="text-xl font-black mono text-yellow-400">—</p>
+        <p class="text-[8px] text-slate-600 mt-0.5">t_pre = 600/TS × konsantrasyon faktörü</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Çıktı → Aşama 2 -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Çıktı → Modül 2'ye</div>
+    <div class="rounded-xl p-4" style="background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.2)">
+      <p class="text-[9px] text-slate-400 mb-2">HSD sonrası tahmini d₅₀:</p>
+      <p id="hsd_out_d50" class="text-2xl font-black mono" style="color:#c4b5fd">—</p>
+      <p class="text-[9px] text-slate-600 mt-1">Bead Mill feed d₅₀ olarak aktarılır →</p>
+      <button onclick="hsdPushToMod2()" id="hsd_pushBtn"
+              class="mt-3 w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider text-white transition"
+              style="background:rgba(124,58,237,0.4);border:1px solid rgba(124,58,237,0.5)" disabled>
+        Modül 2'ye Aktar →
+      </button>
+    </div>
+    <div class="mt-4 p-3 rounded-xl text-[9px] text-slate-400 leading-relaxed"
+         style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.04)">
+      <strong class="text-slate-300">Fizik notu:</strong> HSD aglomerat kırma rejimi 40–50 kJ/mol.
+      Agregat kırma 600–1000 kJ/mol → bead mill zorunlu.
+      <br><em class="text-slate-500">Kaynak: Evonik Dispersant Chemistry Wiki</em>
+    </div>
+  </div>
+
+</div>
+        </div>
+      </div>
+
+      <!-- MODÜL 2: BEAD MILL -->
+      <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(234,88,12,0.35)" id="dp_mod2">
+        <div class="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+             style="background:rgba(234,88,12,0.12)"
+             onclick="dpToggle('dp_mod2_body','dp_mod2_arrow')">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-black"
+                  style="background:#ea580c">2</span>
+            <span class="font-black text-sm" style="color:#fdba74">Bead Mill — Pigment Öğütme</span>
+            <span class="text-[9px] text-slate-500">Bond (1952) + Kwade (1999) + Dinamik η</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="dp_mod2_badge" class="text-[9px] px-2 py-0.5 rounded"
+                  style="background:rgba(100,116,139,0.2);color:#64748b">—</span>
+            <i id="dp_mod2_arrow" class="fas fa-chevron-down text-slate-500 transition-transform"></i>
+          </div>
+        </div>
+        <div id="dp_mod2_body" class="p-5" style="background:#0a0f1e;display:none">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Parametreler -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Parametreler</div>
+    <div class="space-y-3">
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Değirmene Giriş Parçacık Çapı d₅₀ <span class="text-slate-500">(µm = mikrometre)</span></label>
+        <input type="number" id="dp_d50feed" value="8" step="0.5" min="0.1" class="input-dark" oninput="dpOnGlobalChange()">
+        <p class="text-[9px] text-slate-500 mt-1">HSD'den "Modül 2'ye Aktar" ile otomatik dolar, ya da manuel girin.</p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Bead Mill Tipi</label>
+        <select id="dp_millType" class="input-dark">
+          <option value="horizontal">Yatay (η=0.92)</option>
+          <option value="pin">Pin Mill (η=0.90)</option>
+          <option value="annular">Annular Gap (η=0.95)</option>
+          <option value="vertical">Dikey (η=0.85)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Öğütme Boncuğu Malzemesi</label>
+        <select id="dp_beadMat" class="input-dark">
+          <option value="zro2">ZrO₂/YTZ — ρ=6050 kg/m³</option>
+          <option value="ce_zro2">Ce-ZrO₂ — ρ=6000 kg/m³</option>
+          <option value="alumina">Al₂O₃ — ρ=3900 kg/m³</option>
+          <option value="glass">Cam — ρ=2500 kg/m³</option>
+          <option value="steel">Çelik — ρ=7800 kg/m³</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Boncuk Çapı — d<sub>b</sub> <span class="text-slate-500">(mm)</span> <span class="dp-tip" data-tip="Öğütme boncuğunun çapı — SI hesabının en kritik parametresi.\n\nSI = ρ_b × d_b³ × v_t² — çap küple (³) etkiler!\n\nKwade Kuralı (1999):\nd_b ≤ 3 × d₅₀_feed\n\nYönelim:\n>2mm = kaba pigmentler (10–50µm feed)\n0.5–2mm = standart dispersiyon\n0.1–0.5mm = nano / ince pigment\n\nKüçük boncuk → düşük SI, yüksek boncuk sayısı\nBüyük boncuk → yüksek SI, az temas noktası">ⓘ</span></label>
+        <input type="number" id="dp_beadSize" value="0.8" step="0.1" min="0.1" max="5" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Kural: boncuk çapı ≤ 3 × giriş parçacık çapı. Nano öğütme için &lt;0.5 mm.</p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Boncuk Dolum Oranı (%, tipik: 50–85)</label>
+        <input type="number" id="dp_beadFill" value="70" step="5" min="50" max="85" class="input-dark">
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-[10px] font-semibold text-slate-400 normal-case">Rotor Uç Hızı — v<sub>t</sub> (m/s) <span class="dp-tip" data-tip="Rotorun en dış noktasının çevresel hızı.\n\nFormül: v_t = π × D_rotor × n\n\nNeden önemli:\n• SI = ρ_bead × d_b³ × v_t² — uç hızı SI'yi v_t² ile artırır\n• Yüksek v_t → yüksek enerji → hızlı öğütme, ama ısınma riski\n\nDEVRİDAİM DEBİSİNDEN FARKI:\nUç hızı = boncukların nasıl hareket ettiği (SI)\nDebi = slurry'nin ne kadar hızlı aktığı (pas enerjisi)\nİkisi bağımsız kontrol edilir.\n\nTipik: 6–15 m/s · Nano: 12–20 m/s">ⓘ</span></label>
+          <span id="dp_tipLabel" class="text-xs font-black mono" style="color:#fb923c">9.2 m/s</span>
+        </div>
+        <input type="range" id="dp_tipSpeed" min="3" max="25" step="0.2" value="9.2" class="w-full"
+               style="accent-color:#ea580c"
+               oninput="document.getElementById('dp_tipLabel').textContent=parseFloat(this.value).toFixed(1)+' m/s'">
+        <p class="text-[9px] text-slate-500 mt-1">Tipik: 6–15 m/s. Nano uygulamalar: 12–20 m/s.</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Değirmen Hacmi (L)</label>
+          <input type="number" id="dp_millVol" value="1.0" step="0.5" min="0.1" class="input-dark">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Motor Gücü (kW)</label>
+          <input type="number" id="dp_motorKw" value="3.0" step="0.5" min="0.1" class="input-dark">
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Devridaim / Akış Debisi (L/dak) <span class="dp-tip" data-tip="Sürekli (kontinü) modda slurry'nin değirmenden geçiş hızı.\n\nFormül: E_pas = P_net × (V_mill/Q) / m_batch\n\nDebi artar →\n• Pas başı enerji düşer\n• Daha fazla pas gerekir\n• Toplam süre uzar\n\nUÇ HIZINDAN FARKI:\nDebi = slurry akış hızı (pas enerjisini etkiler)\nUç hızı = boncuk hareketi (SI'yi etkiler)\nİkisi birbirinden bağımsız.\n\nTipik: değirmen hacminin 3–10 katı/saat">ⓘ</span></label>
+        <input type="number" id="dp_flowRate" value="5.0" step="0.5" min="0.1" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Sürekli modda slurry'nin değirmenden geçiş debisi.</p>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="dp_calcBtn" class="flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest text-white flex items-center justify-center gap-2 transition"
+                style="background:linear-gradient(135deg,#ea580c,#f97316)">
+          <i class="fas fa-calculator"></i> Hesapla
+        </button>
+        <button id="dp_resetBtn" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
+          <i class="fas fa-undo text-slate-400 text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sonuçlar -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Sonuçlar</div>
+    <div class="space-y-3">
+
+      <div class="rounded-xl p-4 text-center" style="background:#0d1628;border:1px solid rgba(234,88,12,0.2)">
+        <p class="text-[9px] text-slate-500 uppercase mb-1">Stres Yoğunluğu SI <span class="dp-tip" data-tip="SI = ρ_boncuk × d_b³ × v_t² [Nm]\n\nBir boncuğun pigment agglomeratına uyguladığı mekanik enerji.\n\nOPTİMUM = pigmentin kırılma direncine eşit\n\n• Çok düşük → agglomerat kırılmaz, verim sıfır\n• Optimum → verimli öğütme\n• Çok yüksek → primer boyuta iner, enerji israfı, pigment zarar\n\nTipik aralıklar:\nTiO₂: 1×10⁻⁴ – 5×10⁻³ Nm\nOrganik: 1×10⁻⁵ – 1×10⁻³ Nm\nCB: 1×10⁻⁶ – 5×10⁻⁴ Nm">ⓘ</span></p>
+        <p id="dp_siVal" class="text-2xl font-black mono" style="color:#f97316">--</p>
+        <p id="dp_siStatus" class="text-[10px] mt-1 italic font-bold text-slate-400">--</p>
+        <p class="text-[8px] text-slate-600 mt-1">SI = ρ_b · d_b³ · v_t² [Nm] — Kwade (1999)</p>
+      </div>
+
+      <div class="rounded-xl p-3 text-center" style="background:#0d1628;border:1px solid rgba(251,146,60,0.15)">
+        <p class="text-[9px] text-slate-500 uppercase mb-1">Spesifik Enerji E_m <span class="dp-tip" data-tip="Bond 3. Yasası: Em = Wi × 10 × (1/√d_hedef − 1/√d_feed) × η [kWh/t]\n\nTon slurry başına gereken toplam öğütme enerjisi.\n\nNe kadar:\n< 20 kWh/t = kolay (dolgu, kalsit)\n20–80 kWh/t = normal (TiO₂, Fe₂O₃)\n80–200 kWh/t = zor (nano, organik)\n> 200 kWh/t = çok zor / hedef revizyonu önerilir\n\nUYARI: d₅₀ hedefi yarıya indiğinde Em ×3–4 artar!">ⓘ</span></p>
+        <p id="dp_emVal" class="text-xl font-black mono text-orange-400">-- kWh/t</p>
+        <p id="dp_powerCheck" class="text-sm font-black mono text-yellow-400 mt-0.5">--</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-xl p-3 text-center" style="background:#0d1628;border:1px solid rgba(255,255,255,0.05)">
+          <p class="text-[9px] text-slate-500 uppercase mb-1">Süre (batch)</p>
+          <p id="dp_timeVal" class="text-2xl font-black mono text-green-400">--</p>
+        </div>
+        <div class="rounded-xl p-3 text-center" style="background:#0d1628;border:1px solid rgba(255,255,255,0.05)">
+          <p class="text-[9px] text-slate-500 uppercase mb-1">Pas Sayısı</p>
+          <p id="dp_passVal" class="text-2xl font-black mono text-orange-400">--</p>
+        </div>
+      </div>
+
+      <div class="rounded-xl p-3" style="background:#0d1628;border:1px solid rgba(255,255,255,0.04)">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p class="text-[8px] text-slate-500 uppercase">P_net <span class="dp-tip" data-tip="P_net = P_motor × η_değirmen [kW]\n\nMotordan slurry'e gerçekte iletilen güç.\n\nη tipik değerleri:\nAnnular Gap = 0.95\nYatay Disk = 0.92\nPin Mill = 0.90\nDikey = 0.85\n\nP_net düşük → Em hedefi uzun sürede tutulur\nP_net yüksek → hızlı ama ısınma riski">ⓘ</span></p>
+            <p id="dp_pnet" class="text-xs font-black mono text-slate-200">-- kW</p>
+          </div>
+          <div>
+            <p class="text-[8px] text-slate-500 uppercase">E/pas <span class="dp-tip" data-tip="Tek geçiş başına ton slurry'e verilen enerji [kWh/t]\n\nE_pas = P_net × (V_mill / Q_debi) / m_batch\n\nE_pas düşük → çok pas gerekir (Süre uzar)\nE_pas yüksek → az pas ama her pas fazla ısıtır\n\nHedef: E_toplam / (3–8 pas) arasında denge\nTipik: 5–30 kWh/t per pas">ⓘ</span></p>
+            <p id="dp_emPerPass" class="text-xs font-black mono text-slate-200">-- kWh/t</p>
+          </div>
+          <div>
+            <p class="text-[8px] text-slate-500 uppercase">P/V <span class="dp-tip" data-tip="Değirmen hacmi başına güç yoğunluğu [kW/L]\n\nP/V = P_net / V_değirmen\n\nÖlçek büyütme kaidesi: P/V = sabit (Hayward Gordon)\n\nReferans:\n< 0.5 kW/L = düşük verim\n0.5–2 kW/L = normal dispersiyon\n2–5 kW/L = yüksek yoğunluk\n> 5 kW/L = aşırı ısınma riski\n\nBüyük değirmene geçince P_motor = P/V × V_yeni">ⓘ</span></p>
+            <p id="dp_pvMill" class="text-xs font-black mono text-slate-200">-- kW/L</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Boncuk Boyutu Rehberi -->
+      <div>
+        <p class="text-[9px] font-black text-slate-500 uppercase mb-2">Boncuk Boyutu Rehberi <span class="dp-tip" data-tip="Her boncuk boyutunun SI'ye etkisi ve hangi d₅₀ aralığı için uygun olduğu.\n\nRENK ANLAMI:\n🟢 Yeşil = mevcut pigmen için optimum SI\n🟡 Sarı = kabul edilebilir (optimum dışı ama çalışır)\n🔴 Kırmızı = SI yetersiz veya aşırı\n\nBoncuk küçültme → SI düşer, boncuk sayısı artar\nBoncuk büyütme → SI artar, temas noktası azalır\n\nFormül: SI = ρ_bead × d_b³ × v_t²">ⓘ</span></p>
+        <div id="dp_beadGuide" class="space-y-1"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Grafikler & Analiz -->
+  <div>
+    <div class="flex items-center gap-2 mb-2">
+      <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest">d₅₀ Azalma Eğrisi</div>
+      <span class="dp-tip" data-tip="NASIL OKUNUR:\n\nX ekseni = pas sayısı (değirmenden kaç kez geçti)\nY ekseni = ortalama partikül çapı d₅₀ (µm)\n\nYeşil yatay çizgi = hedef d₅₀\nEğri bu çizgiye inince işlem tamamdır.\n\nİYİ EĞRİ: Hızlı düşüş, platosuz\nKÖTÜ EĞRİ: Yavaş düşüş veya plato → SI yetersiz veya Wi yanlış\n\nPlateau görüyorsanız:\n• Boncuğu küçültün veya v_t artırın\n• Pigment tipini kontrol edin (Wi doğru mu?)">ⓘ</span>
+    </div>
+    <canvas id="dp_chart" height="200" style="width:100%;background:transparent"></canvas>
+    <div class="mt-2 p-2 rounded-lg text-[9px] text-slate-500 leading-relaxed" style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.04)">
+      Her geçişte azalan d₅₀ — Bond 3. Yasa + bead mill η=0.40. Yeşil çizgi = hedef. Eğri platoya girerse SI optimize edin.
+    </div>
+
+    <div class="flex items-center gap-2 mt-5 mb-2">
+      <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest">SI — Boncuk Çapı Analizi</div>
+      <span class="dp-tip" data-tip="NASIL OKUNUR:\n\nX ekseni = boncuk çapı d_b (mm)\nY ekseni = SI değeri (Nm)\n\nYeşil band = pigment için optimum SI aralığı\nTuruncu/kırmızı nokta = mevcut seçiminiz\n\nHedef: noktanın yeşil band içinde olması\n\nNokta yeşilin ALTINDA:\n→ Boncuğu büyütün veya v_t artırın\n\nNokta yeşilin ÜSTÜNDE:\n→ Boncuğu küçültün veya v_t düşürün\n\nBirden fazla boncuk boyutunu test etmek için boncuk çapını değiştirip hesaplayın.">ⓘ</span>
+    </div>
+    <canvas id="dp_siChart" height="160" style="width:100%;background:transparent"></canvas>
+
+    <div id="dp_siAnalysis" class="space-y-3 mt-4">
+      <div class="text-center py-8 text-slate-600"><p>Hesapla butonuna basın</p></div>
+    </div>
+
+    <div class="mt-4">
+      <div class="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Öneriler</div>
+      <div id="dp_recomm" class="text-[10px] text-slate-300 leading-relaxed space-y-2">
+        <p class="text-slate-500 italic">Hesaplama sonrası öneriler burada görünecek.</p>
+      </div>
+    </div>
+
+    <button id="dp_saveBtn" class="w-full mt-4 py-3 text-white font-black rounded-xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition"
+            style="background:#ea580c">
+      <i class="fas fa-bookmark"></i> Karşılaştırmaya Kaydet
+    </button>
+
+  </div>
+
+</div>
+        </div>
+      </div>
+
+      <!-- MODÜL 3: LETDOWN RİSK -->
+      <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(20,184,166,0.35)" id="dp_mod3">
+        <div class="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+             style="background:rgba(20,184,166,0.12)"
+             onclick="dpToggle('dp_mod3_body','dp_mod3_arrow')">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-black"
+                  style="background:#14b8a6">3</span>
+            <span class="font-black text-sm" style="color:#5eead4">Letdown Risk Analizi</span>
+            <span class="text-[9px] text-slate-500">Solvent uyumu, floating riski, re-flokülasyon</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="dp_mod3_badge" class="text-[9px] px-2 py-0.5 rounded"
+                  style="background:rgba(100,116,139,0.2);color:#64748b">—</span>
+            <i id="dp_mod3_arrow" class="fas fa-chevron-down text-slate-500 transition-transform"></i>
+          </div>
+        </div>
+        <div id="dp_mod3_body" class="p-5" style="background:#0a0f1e;display:none">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Parametreler -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Letdown Koşulları</div>
+    <div class="space-y-3">
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Dispersant Dozajı <span class="text-slate-500">(pigment ağırlığının %'si)</span></label>
+        <input type="number" id="ld_dispersantPct" value="15" step="1" min="1" max="60" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">İnorganik: min ~10%, Organik/CB: min ~20–25%</p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Letdown Solventi — Pasta Baziyle Uyumu</label>
+        <select id="ld_solventMatch" class="input-dark">
+          <option value="same">Aynı baz (düşük risk)</option>
+          <option value="similar" selected>Benzer polar yapı (orta risk)</option>
+          <option value="different">Farklı baz / polar uyumsuz (yüksek risk)</option>
+        </select>
+        <p class="text-[9px] text-slate-500 mt-1">Letdown solventinin pasta baziyle uyumu.</p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Pasta → Letdown Sıcaklık Farkı <span class="text-slate-500">ΔT (°C)</span></label>
+        <input type="number" id="ld_tempDelta" value="10" step="5" min="0" max="80" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Öneri: ΔT &lt; 5°C. Soğuk letdown → viskozite şoku.</p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Letdown Ekleme / Karıştırma Hızı</label>
+        <select id="ld_letdownRate" class="input-dark">
+          <option value="slow">Yavaş — damla damla / kontrollü</option>
+          <option value="medium" selected>Orta — aşamalı ekleme</option>
+          <option value="fast">Hızlı — tek seferde dökme</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 normal-case block mb-1">Bead Mill Çıkış Parçacık Çapı d₅₀ <span class="text-slate-500">(µm = mikrometre)</span></label>
+        <input type="number" id="ld_d50mill" value="0.3" step="0.05" min="0.01" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Bead mill çıktısından alın (Modül 2 hedefi).</p>
+      </div>
+
+      <button onclick="ldCalc()" class="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-widest text-white flex items-center justify-center gap-2 transition"
+              style="background:linear-gradient(135deg,#14b8a6,#06b6d4)">
+        <i class="fas fa-shield-alt"></i> Risk Analizi Çalıştır
+      </button>
+
+      <div class="p-3 rounded-xl text-[9px] text-slate-400 leading-relaxed"
+           style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.04)">
+        <strong class="text-slate-300">Baz seçimi:</strong> Global panelden alınır
+        (<span id="ld_baseDisplay" class="text-teal-400">Su bazlı</span>).
+        Pigment:
+        <span id="ld_pigDisplay" class="text-teal-400">TiO₂</span>.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Risk Göstergeleri -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Risk Skoru</div>
+
+    <!-- Ana skor -->
+    <div class="rounded-xl p-5 text-center mb-4" id="ld_mainCard"
+         style="background:rgba(100,116,139,0.1);border:2px solid rgba(100,116,139,0.3)">
+      <p class="text-[9px] text-slate-500 uppercase mb-1">Genel Letdown Riski</p>
+      <p id="ld_overallPct" class="text-5xl font-black mono" style="color:#64748b">—</p>
+      <p id="ld_overallLabel" class="text-sm font-black mt-2 text-slate-400">Hesaplanmadı</p>
+      <p class="text-[9px] text-slate-600 mt-1">0=Risksiz · 100=Kritik</p>
+    </div>
+
+    <!-- 4 alt risk kartı -->
+    <div class="space-y-2">
+
+      <div class="rounded-lg p-3 flex items-center justify-between"
+           style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase">Solvent Uyumsuzluğu</p>
+          <p id="ld_solventLabel" class="text-[10px] text-slate-500 mt-0.5">—</p>
+        </div>
+        <div class="text-right">
+          <p id="ld_solventScore" class="text-xl font-black mono text-slate-500">—</p>
+          <p id="ld_solventBadge" class="text-[9px]">—</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg p-3 flex items-center justify-between"
+           style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase">Sıcaklık Şoku</p>
+          <p id="ld_tempLabel" class="text-[10px] text-slate-500 mt-0.5">—</p>
+        </div>
+        <div class="text-right">
+          <p id="ld_tempScore" class="text-xl font-black mono text-slate-500">—</p>
+          <p id="ld_tempBadge" class="text-[9px]">—</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg p-3 flex items-center justify-between"
+           style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase">Re-flokülasyon</p>
+          <p id="ld_floculLabel" class="text-[10px] text-slate-500 mt-0.5">—</p>
+        </div>
+        <div class="text-right">
+          <p id="ld_floculScore" class="text-xl font-black mono text-slate-500">—</p>
+          <p id="ld_floculBadge" class="text-[9px]">—</p>
+        </div>
+      </div>
+
+      <div class="rounded-lg p-3 flex items-center justify-between"
+           style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase">Floating / Çökelme</p>
+          <p id="ld_floatLabel" class="text-[10px] text-slate-500 mt-0.5">—</p>
+        </div>
+        <div class="text-right">
+          <p id="ld_floatScore" class="text-xl font-black mono text-slate-500">—</p>
+          <p id="ld_floatBadge" class="text-[9px]">—</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Öneriler & Dispersant Rehberi -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Dispersant & Öneriler</div>
+
+    <!-- Çapa grubu bilgisi -->
+    <div id="ld_anchorCard" class="rounded-xl p-4 mb-4"
+         style="background:rgba(20,184,166,0.07);border:1px solid rgba(20,184,166,0.25)">
+      <p class="text-[9px] font-black text-teal-400 uppercase mb-2">Pigment İçin Önerilen Çapa Grubu</p>
+      <p id="ld_anchorText" class="text-sm font-black text-slate-200">—</p>
+      <p id="ld_anchorDetail" class="text-[9px] text-slate-400 mt-1">—</p>
+    </div>
+
+    <!-- Min dispersant dozu uyarısı -->
+    <div id="ld_dispDoseCard" class="rounded-xl p-4 mb-4"
+         style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.06)">
+      <p class="text-[9px] font-black text-slate-500 uppercase mb-2">Dispersant Doz Kontrolü</p>
+      <div id="ld_dispDoseContent" class="text-[10px] text-slate-400">Hesaplanmadı</div>
+    </div>
+
+    <!-- Pratik öneriler listesi -->
+    <div>
+      <p class="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Pratik Kontrol Listesi</p>
+      <div id="ld_recommList" class="space-y-2 text-[10px]">
+        <p class="text-slate-600 italic">Risk analizi çalıştırınca öneriler görünür.</p>
+      </div>
+    </div>
+
+    <!-- Referans -->
+    <div class="mt-4 p-2 rounded-lg text-[8px] text-slate-500 italic"
+         style="background:rgba(0,0,0,0.2)">
+      📚 Milanovic &amp; Casey (Evonik 2018) · pigment-dispersion-process wiki · dispersant-chemistry wiki
+    </div>
+
+  </div>
+
+</div>
+        </div>
+      </div>
+
+      <!-- MODÜL 4: MALİYET & ENERJİ -->
+      <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(34,197,94,0.35)" id="dp_mod4">
+        <div class="flex items-center justify-between px-5 py-3 cursor-pointer select-none"
+             style="background:rgba(34,197,94,0.12)"
+             onclick="dpToggle('dp_mod4_body','dp_mod4_arrow')">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-black"
+                  style="background:#22c55e">4</span>
+            <span class="font-black text-sm" style="color:#86efac">Maliyet & Enerji Analizi</span>
+            <span class="text-[9px] text-slate-500">kWh/ton, ₺/ton, CO₂ kg/ton</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="dp_mod4_badge" class="text-[9px] px-2 py-0.5 rounded"
+                  style="background:rgba(100,116,139,0.2);color:#64748b">—</span>
+            <i id="dp_mod4_arrow" class="fas fa-chevron-down text-slate-500 transition-transform"></i>
+          </div>
+        </div>
+        <div id="dp_mod4_body" class="p-5" style="background:#0a0f1e;display:none">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Parametreler -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Maliyet Girdileri</div>
+    <div class="space-y-3">
+
+      <!-- Tarife tipi seçici -->
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Elektrik Abonelik Tarife Tipi</label>
+        <select id="ce_tariffType" class="input-dark" onchange="ceSetTariff(this.value)">
+          <option value="ag_3faz">AG — Alçak Gerilim, 3 Faz (küçük/orta tesis)</option>
+          <option value="og">OG — Orta Gerilim (büyük tesis, OSB)</option>
+          <option value="serbest">Serbest Piyasa / Özel Tedarikçi</option>
+          <option value="custom">Manuel — Kendi değerimi gireceğim</option>
+        </select>
+        <div id="ce_tariffInfo" class="mt-1.5 p-2 rounded-lg text-[9px] leading-relaxed"
+             style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);color:#86efac">
+          <strong>3 Faz AG:</strong> Motor ve ekipman beslemesi için standart. Boya tesislerinin çoğu bu tarife ile bağlıdır.
+          Güç 50 kVA altındaysa tek fazlı sayaç yeterli olabilir, ama endüstriyel motorlarda 3 faz zorunludur.
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Birim Enerji Fiyatı (₺ / kWh)</label>
+        <input type="number" id="ce_electricityRate" value="4.81" step="0.05" min="0.1" class="input-dark">
+        <p id="ce_rateNote" class="text-[9px] text-slate-500 mt-1">
+          EPDK Nisan 2026 — AG sanayi: <strong class="text-green-400">~4.81 ₺/kWh</strong> (KDV hariç).
+          Zamlanırsa buradan güncelle.
+        </p>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">HSD (Ön Karıştırıcı) Motor Gücü (kW)</label>
+        <input type="number" id="ce_hsdKw" value="5.5" step="0.5" min="0.5" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Kural: 10 HP/100 gal ≈ 2 kW/100L (Markee 2008)</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Boncuk Aşınma Hızı (g/ton ürün)</label>
+          <input type="number" id="ce_beadWearRate" value="500" step="50" min="10" class="input-dark">
+        </div>
+        <div>
+          <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Boncuk Birim Fiyatı (₺/kg)</label>
+          <input type="number" id="ce_beadPrice" value="800" step="50" min="50" class="input-dark">
+          <p class="text-[9px] text-slate-500 mt-1">ZrO₂ ~800–1200 ₺/kg</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Operatör İşçilik Ücreti (₺/saat)</label>
+        <input type="number" id="ce_laborCost" value="250" step="25" min="50" class="input-dark">
+      </div>
+
+      <div>
+        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Ölçek Büyütme — Hedef Üretim Hacmi (litre)</label>
+        <input type="number" id="ce_scaleupVol" value="5000" step="500" min="100" class="input-dark">
+        <p class="text-[9px] text-slate-500 mt-1">Dispersiyon: P/V=sabit (x=0) — Hayward Gordon</p>
+      </div>
+
+      <button onclick="ceCalc()" class="w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-widest text-white flex items-center justify-center gap-2 transition"
+              style="background:linear-gradient(135deg,#16a34a,#22c55e)">
+        <i class="fas fa-coins"></i> Maliyet Hesapla
+      </button>
+
+      <div class="p-3 rounded-xl text-[9px] text-slate-400 leading-relaxed"
+           style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.04)">
+        <strong class="text-slate-300">Not:</strong> Modül 1 (HSD) ve Modül 2 (Bead Mill) hesaplanmışsa
+        enerji değerleri otomatik alınır. Aksi hâlde sıfır sayılır.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Enerji & Maliyet Özeti -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Enerji & Maliyet / ton</div>
+
+    <!-- Enerji bölümü -->
+    <div class="rounded-xl p-4 mb-3" style="background:#0d1628;border:1px solid rgba(34,197,94,0.2)">
+      <p class="text-[9px] font-black text-green-400 uppercase mb-3">Spesifik Enerji Tüketimi</p>
+      <div class="space-y-2 text-[10px]">
+        <div class="flex justify-between">
+          <span class="text-slate-400">HSD pre-mixer</span>
+          <span id="ce_emHsd" class="mono font-black text-slate-300">— kWh/t</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Bead Mill (Bond)</span>
+          <span id="ce_emMill" class="mono font-black text-slate-300">— kWh/t</span>
+        </div>
+        <div class="flex justify-between pt-2" style="border-top:1px solid rgba(255,255,255,0.06)">
+          <span class="text-green-300 font-black">TOPLAM</span>
+          <span id="ce_emTotal" class="mono font-black text-green-400 text-lg">— kWh/t</span>
+        </div>
+        <div class="flex justify-between pt-1">
+          <span class="text-slate-500">CO₂ (grid 0.45 kg/kWh)</span>
+          <span id="ce_co2" class="mono text-slate-400">— kg CO₂/t</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maliyet bölümü -->
+    <div class="rounded-xl p-4" style="background:#0d1628;border:1px solid rgba(34,197,94,0.2)">
+      <p class="text-[9px] font-black text-green-400 uppercase mb-3">Değişken Maliyet (₺/ton)</p>
+      <div class="space-y-2 text-[10px]">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Elektrik</span>
+          <span id="ce_costElec" class="mono font-black text-slate-300">— ₺/t</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Boncuk aşınması</span>
+          <span id="ce_costBead" class="mono font-black text-slate-300">— ₺/t</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">İşçilik</span>
+          <span id="ce_costLabor" class="mono font-black text-slate-300">— ₺/t</span>
+        </div>
+        <div class="flex justify-between pt-2" style="border-top:1px solid rgba(255,255,255,0.06)">
+          <span class="text-green-300 font-black">TOPLAM</span>
+          <span id="ce_costTotal" class="mono font-black text-green-400 text-lg">— ₺/t</span>
+        </div>
+        <div class="flex justify-between pt-1">
+          <span class="text-slate-500">Batch maliyeti (<span id="ce_batchKgLabel">—</span> kg)</span>
+          <span id="ce_costBatch" class="mono text-slate-400">— ₺</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Verimlilik & Scale-Up -->
+  <div>
+    <div class="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">Verimlilik & Scale-Up</div>
+
+    <!-- P/V değerlendirmesi -->
+    <div class="rounded-xl p-4 mb-3" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06)">
+      <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Bead Mill P/V Değerlendirmesi</p>
+      <div class="flex items-end gap-2 mb-1">
+        <p id="ce_pvVal" class="text-3xl font-black mono text-slate-500">—</p>
+        <p class="text-[10px] text-slate-500 mb-1">kW/L</p>
+      </div>
+      <p id="ce_pvStatus" class="text-[10px] font-bold text-slate-500">—</p>
+      <!-- Görsel bar -->
+      <div class="mt-2 relative h-2 rounded-full overflow-hidden" style="background:rgba(255,255,255,0.05)">
+        <div class="absolute left-0 top-0 h-full rounded-full transition-all"
+             id="ce_pvBar" style="width:0%;background:#64748b"></div>
+        <div class="absolute h-full w-px" style="left:16.7%;background:rgba(34,197,94,0.5)"></div>
+        <div class="absolute h-full w-px" style="left:100%;background:rgba(239,68,68,0.5)"></div>
+      </div>
+      <div class="flex justify-between text-[8px] text-slate-600 mt-1">
+        <span>0</span><span class="text-green-700">0.5</span><span>1.5</span><span class="text-yellow-700">3</span><span>6+</span>
+      </div>
+    </div>
+
+    <!-- Scale-up -->
+    <div class="rounded-xl p-4 mb-3" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06)">
+      <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Scale-Up Tahmini</p>
+      <p class="text-[9px] text-slate-500 mb-2">Dispersiyon: P/V = sabit (x=0, Hayward Gordon) → P₂ = P/V × V₂</p>
+      <div class="space-y-1 text-[10px]">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Mevcut hacim</span>
+          <span id="ce_suVolCur" class="mono text-slate-300">— L</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Mevcut P/V</span>
+          <span id="ce_suPVcur" class="mono text-slate-300">— kW/L</span>
+        </div>
+        <div class="flex justify-between pt-1" style="border-top:1px solid rgba(255,255,255,0.05)">
+          <span class="text-green-300 font-black">Hedef hacim (<span id="ce_suVolTarget">—</span> L)</span>
+          <span id="ce_suPtarget" class="mono font-black text-green-400">— kW motor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tipik referans değerler -->
+    <div class="rounded-xl p-4" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06)">
+      <p class="text-[9px] font-black text-slate-400 uppercase mb-2">Endüstri Referans Değerleri</p>
+      <div class="space-y-1 text-[9px]">
+        <div class="flex justify-between">
+          <span class="text-slate-500">Bead mill P/V tipik</span>
+          <span class="mono text-slate-400">0.5–3 kW/L</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">TiO₂ dispersiyon E_m</span>
+          <span class="mono text-slate-400">40–80 kWh/t</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">Organik pigment E_m</span>
+          <span class="mono text-slate-400">80–200 kWh/t</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">CO₂ faktörü (TR 2024)</span>
+          <span class="mono text-slate-400">~0.45 kg/kWh</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-500">HSD kural (HP)</span>
+          <span class="mono text-slate-400">10 HP/100 gal</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 p-2 rounded-lg text-[8px] text-slate-500 italic"
+         style="background:rgba(0,0,0,0.2)">
+      📚 Markee &amp; Bauer (2008) · Hayward Gordon Mastering Mixing · scale-up-exponents wiki
+    </div>
+
+  </div>
+
+</div>
+        </div>
+      </div>
+
+    </div>
     </div>
     </div> <!-- end #pageDispersion -->
 
@@ -1742,29 +2604,23 @@
 
     <!-- Help Modal -->
     <div id="helpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:600;backdrop-filter:blur(8px);align-items:center;justify-content:center;">
-        <div class="modal-box" style="max-width:900px;">
+        <div class="modal-box" style="max-width:960px;">
             <div class="sticky top-0 z-10 p-5 border-b" style="background:#0d1628;border-color:rgba(255,255,255,0.06)">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 rounded-lg" style="background:rgba(59,130,246,0.15)">
-                            <i class="fas fa-book-open text-blue-400"></i>
+                        <div class="p-2 rounded-lg" id="helpModalIcon" style="background:rgba(59,130,246,0.15)">
+                            <i id="helpModalIconI" class="fas fa-book-open text-blue-400"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg font-black mono">TEKNİK METODOLOJİ</h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Hesaplama yöntemleri · Literatür referansları · Simülasyon sınırları</p>
+                            <h2 class="text-lg font-black mono" id="helpModalTitle">TEKNİK METODOLOJİ</h2>
+                            <p class="text-xs text-slate-500 mt-0.5" id="helpModalSub">Hesaplama yöntemleri · Literatür referansları · Simülasyon sınırları</p>
                         </div>
                     </div>
                     <button id="closeHelp" class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition">
                         <i class="fas fa-times text-sm"></i>
                     </button>
                 </div>
-                <div class="flex gap-1 mt-4 flex-wrap">
-                    <button class="help-tab active-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="homogeneity">Homojenlik Ölçümü</button>
-                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="formulas">Hesaplama Formülleri</button>
-                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="score">Verimlilik Skoru</button>
-                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="refs">Literatür</button>
-                    <button class="help-tab px-4 py-2 rounded-lg text-xs font-bold transition" data-tab="limits">Sınırlar</button>
-                </div>
+                <div id="helpTabBar" class="flex gap-1 mt-4 flex-wrap"></div>
             </div>
             <div id="helpBody" class="p-6"></div>
         </div>
@@ -2787,13 +3643,38 @@
 </div>`
         };
 
-        function renderHelp(tab) {
-            document.getElementById('helpBody').innerHTML = helpContent[tab] || '';
+        // ── Context-aware help system ─────────────────────────────────
+        window._activePageTab = 'mixing';
+
+        function openHelpModal(pageId) {
+            const page = HELP_PAGES[pageId] || HELP_PAGES['mixing'];
+            // Update header
+            document.getElementById('helpModalTitle').textContent = page.title;
+            document.getElementById('helpModalSub').textContent = page.subtitle;
+            document.getElementById('helpModalIconI').className = page.icon;
+            document.getElementById('helpModalIcon').style.background = page.iconBg;
+            // Build tab bar
+            const bar = document.getElementById('helpTabBar');
+            bar.innerHTML = '';
+            page.tabs.forEach((t, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'help-tab px-4 py-2 rounded-lg text-xs font-bold transition' + (i === 0 ? ' active-tab' : '');
+                btn.dataset.tab = t.id;
+                btn.textContent = t.label;
+                btn.onclick = function() {
+                    bar.querySelectorAll('.help-tab').forEach(b => b.classList.remove('active-tab'));
+                    this.classList.add('active-tab');
+                    document.getElementById('helpBody').innerHTML = page.tabs.find(x => x.id === this.dataset.tab)?.content || '';
+                };
+                bar.appendChild(btn);
+            });
+            // Show first tab
+            document.getElementById('helpBody').innerHTML = page.tabs[0]?.content || '';
+            document.getElementById('helpModal').style.display = 'flex';
         }
 
         document.getElementById('openHelp').onclick = () => {
-            document.getElementById('helpModal').style.display = 'flex';
-            renderHelp('homogeneity');
+            openHelpModal(window._activePageTab || 'mixing');
         };
 
         document.getElementById('closeHelp').onclick = () => {
@@ -2805,14 +3686,6 @@
                 document.getElementById('helpModal').style.display = 'none';
             }
         };
-
-        document.querySelectorAll('.help-tab').forEach(btn => {
-            btn.onclick = function() {
-                document.querySelectorAll('.help-tab').forEach(b => b.classList.remove('active-tab'));
-                this.classList.add('active-tab');
-                renderHelp(this.dataset.tab);
-            };
-        });
         // ============ UYGUNLUK ANALİZİ ============
 // ============ TANK UYGUNLUK ANALİZİ ============
 
@@ -3289,8 +4162,120 @@ document.getElementById('manuelEkleBtn').onclick = () => {
     }
 };
 
+// ── Pervane & Süspansiyon — Tank Seçici ─────────────────────────────
+const MIX_IMP_MAP = {
+    'marine_propeller': 'propeller',
+    'lenart_dishli':    'paddle',
+    'lenart_dishsiz':   'propeller',
+    'cowles':           'cowles',
+    'hydrofoil':        'hydrofoil',
+    'paddle':           'paddle',
+    'anchor':           'anchor',
+};
+
+function mixBuildTankSelector() {
+    const sel = document.getElementById('mix_tankSec');
+    if (!sel || typeof TANK_DB === 'undefined') return;
+
+    const gruplar = {};
+    TANK_DB.forEach(t => {
+        const tesis = t.tesis || t.yer || 'Diğer';
+        if (!gruplar[tesis]) gruplar[tesis] = [];
+        gruplar[tesis].push(t);
+    });
+
+    Object.keys(gruplar).sort().forEach(tesis => {
+        const grp = document.createElement('optgroup');
+        grp.label = tesis;
+        gruplar[tesis].forEach(t => {
+            if (!t.kullanilabilir_lt) return;
+            const opt = document.createElement('option');
+            opt.value = t.kod;
+            opt.textContent = `${t.kod} · ${(t.kullanilabilir_lt/1000).toFixed(1)}m³ · ${t.rpm_max || '?'} RPM`;
+            grp.appendChild(opt);
+        });
+        if (grp.children.length > 0) sel.appendChild(grp);
+    });
+
+    sel.addEventListener('change', function () {
+        mixApplyTankSelection(this.value);
+    });
+}
+
+function mixApplyTankSelection(kod) {
+    const bilgiEl = document.getElementById('mix_tankSecBilgi');
+
+    if (!kod) {
+        bilgiEl.classList.add('hidden');
+        return;
+    }
+
+    const tank = TANK_DB.find(t => t.kod === kod);
+    if (!tank) return;
+
+    // Geometri
+    const T      = tank.D || tank.W || 1.3;
+    const Htank  = tank.H || 2.27;
+    const d_imp  = tank.d_imp || T * 0.3;
+    const rpm    = tank.rpm_max || tank.rpm_min || 100;
+    const impKey = MIX_IMP_MAP[tank.imp_tip] || 'propeller';
+    const kw     = tank.kw || null;
+
+    // Boya seviyesi: kullanilabilir_lt → m³ → m (silindirik varsayım)
+    const vol_m3   = (tank.kullanilabilir_lt || 1000) / 1000;
+    const liquidH  = Math.min(Htank, Math.round(vol_m3 / (Math.PI * (T/2)**2) * 100) / 100);
+
+    // Tank tipi butonu
+    const tipi = (tank.tip || 'silindirik').toLowerCase();
+    if (tipi === 'silindirik') {
+        document.getElementById('geoCyl')?.classList.add('active');
+        document.getElementById('geoSq')?.classList.remove('active');
+    } else {
+        document.getElementById('geoCyl')?.classList.remove('active');
+        document.getElementById('geoSq')?.classList.add('active');
+    }
+
+    // Pervane tipi
+    const impSel = document.getElementById('impellerType');
+    if (impSel) impSel.value = impKey;
+
+    // Geometri inputları
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('vesselD',   T);
+    set('vesselH',   Htank);
+    set('liquidH',   liquidH);
+    set('impellerD', parseFloat(d_imp.toFixed(2)));
+
+    // RPM slider
+    const rpmEl = document.getElementById('rpm');
+    if (rpmEl) {
+        rpmEl.value = rpm;
+        document.getElementById('rpmLabel').textContent = rpm + ' RPM';
+    }
+
+    // Motor gücü (kW → W)
+    if (kw) set('motorPower', kw * 1000);
+
+    // Tank info kutusunu ve metrikleri tetikle
+    if (typeof updateTankInfoLive === 'function') updateTankInfoLive();
+
+    // Bilgi kutusu
+    bilgiEl.classList.remove('hidden');
+    bilgiEl.innerHTML = `
+        <div class="grid grid-cols-2 gap-1">
+            <span class="text-slate-500">Tesis:</span><span class="text-slate-200 font-bold">${tank.tesis || tank.yer || '-'}</span>
+            <span class="text-slate-500">Tank tipi:</span><span class="text-slate-200">${tank.tip || 'Silindirik'}</span>
+            <span class="text-slate-500">Hacim:</span><span class="text-slate-200">${tank.kullanilabilir_lt || '-'} L</span>
+            <span class="text-slate-500">Motor:</span><span class="text-slate-200">${kw ? kw + ' kW' : '?'}</span>
+            <span class="text-slate-500">Pervane:</span><span class="text-cyan-400">${tank.imp_tip?.replace(/_/g,' ') || '-'}</span>
+            <span class="text-slate-500">RPM max:</span><span class="text-orange-400">${tank.rpm_max || '-'}</span>
+        </div>
+        <p class="text-[8px] text-slate-500 mt-1 italic">Viskozite ve yoğunluğu ürüne göre gir. RPM'i ihtiyaca göre ayarla.</p>`;
+}
+
 // Tab switching için ekleme
 document.getElementById('tabUygunluk').onclick = () => {
+    window._activePageTab = 'uygunluk';
     document.getElementById('pageMixing').style.display = 'none';
     document.getElementById('pageDispersion').style.display = 'none';
     document.getElementById('pageUygunluk').style.display = '';
@@ -3301,12 +4286,14 @@ document.getElementById('tabUygunluk').onclick = () => {
 
                 // ============ PAGE TAB SWITCHING ============
         document.getElementById('tabMixing').onclick = () => {
+            window._activePageTab = 'mixing';
             document.getElementById('pageMixing').style.display = '';
             document.getElementById('pageDispersion').style.display = 'none';
             document.getElementById('tabMixing').classList.add('active-page-tab');
             document.getElementById('tabDispersion').classList.remove('active-page-tab');
         };
         document.getElementById('tabDispersion').onclick = () => {
+            window._activePageTab = 'dispersion';
             document.getElementById('pageMixing').style.display = 'none';
             document.getElementById('pageDispersion').style.display = '';
             document.getElementById('tabMixing').classList.remove('active-page-tab');
@@ -3317,12 +4304,29 @@ document.getElementById('tabUygunluk').onclick = () => {
         // ============ DISPERSIYON ENGINE (Kwade 1999 / Bond 1952) ============
 
         const DP_PIGMENTS = {
-            tio2:    { name:'TiO₂ (Rutil)',       Wi:15.0, SI_opt_min:1e-4, SI_opt_max:5e-3, color:'#60a5fa' },
-            fe2o3:   { name:'Fe₂O₃',              Wi:12.0, SI_opt_min:5e-5, SI_opt_max:2e-3, color:'#f87171' },
-            caco3:   { name:'CaCO₃ (Kalsit)',     Wi:8.0,  SI_opt_min:5e-5, SI_opt_max:2e-3, color:'#e2e8f0' },
-            organic: { name:'Organik Pigment',    Wi:5.0,  SI_opt_min:1e-5, SI_opt_max:1e-3, color:'#fb923c' },
-            cb:      { name:'Karbon Siyahı',      Wi:3.0,  SI_opt_min:1e-6, SI_opt_max:5e-4, color:'#475569' },
-            baso4:   { name:'BaSO₄',              Wi:10.0, SI_opt_min:5e-5, SI_opt_max:2e-3, color:'#fbbf24' },
+            // İnorganik — TiO₂
+            tio2:          { name:'TiO₂ Rutil',              Wi:15.0, rho:4200, SI_opt_min:1e-4,   SI_opt_max:5e-3,   color:'#60a5fa' },
+            tio2_anatase:  { name:'TiO₂ Anastaz',            Wi:12.0, rho:3900, SI_opt_min:8e-5,   SI_opt_max:4e-3,   color:'#93c5fd' },
+            // İnorganik — Demir Oksit
+            fe2o3:         { name:'Fe₂O₃ Kırmızı',           Wi:12.0, rho:4800, SI_opt_min:5e-5,   SI_opt_max:2e-3,   color:'#f87171' },
+            fe2o3_yellow:  { name:'Fe₂O₃ Sarı (FeOOH)',      Wi:10.0, rho:4000, SI_opt_min:5e-5,   SI_opt_max:2e-3,   color:'#fde68a' },
+            fe2o3_transp:  { name:'Fe₂O₃ Transparan',        Wi:9.0,  rho:3800, SI_opt_min:3e-5,   SI_opt_max:1.5e-3, color:'#fca5a5' },
+            // İnorganik — Yüksek Performans
+            bivo4:         { name:'Bizmut Vanadat (PY184)',   Wi:13.0, rho:6100, SI_opt_min:1.5e-4, SI_opt_max:6e-3,   color:'#fef08a' },
+            chrome_yellow: { name:'Krom Sarı (PY34) ⚠️',     Wi:11.0, rho:5900, SI_opt_min:1e-4,   SI_opt_max:4e-3,   color:'#facc15' },
+            molibdat:      { name:'Molibdat Oranj (PO21) ⚠️', Wi:11.0, rho:5800, SI_opt_min:1e-4,   SI_opt_max:4e-3,   color:'#fb923c' },
+            // İnorganik — Dolgu
+            caco3:         { name:'CaCO₃ Kalsit',             Wi:8.0,  rho:2700, SI_opt_min:5e-5,   SI_opt_max:2e-3,   color:'#e2e8f0' },
+            baso4:         { name:'BaSO₄',                   Wi:10.0, rho:4480, SI_opt_min:5e-5,   SI_opt_max:2e-3,   color:'#fbbf24' },
+            // Organik
+            phtalo_blue:   { name:'Ftalo Mavi (PB15)',        Wi:7.0,  rho:1600, SI_opt_min:1e-5,   SI_opt_max:1e-3,   color:'#3b82f6' },
+            phtalo_green:  { name:'Ftalo Yeşil (PG7)',        Wi:7.0,  rho:1900, SI_opt_min:1e-5,   SI_opt_max:1e-3,   color:'#22c55e' },
+            dpp_red:       { name:'DPP Kırmızı (PR254)',      Wi:6.0,  rho:1550, SI_opt_min:8e-6,   SI_opt_max:8e-4,   color:'#ef4444' },
+            dpp_orange:    { name:'DPP Oranj (PO73)',         Wi:6.0,  rho:1550, SI_opt_min:8e-6,   SI_opt_max:8e-4,   color:'#f97316' },
+            quinacridone:  { name:'Kinakridon (PV19)',         Wi:5.0,  rho:1500, SI_opt_min:5e-6,   SI_opt_max:6e-4,   color:'#d946ef' },
+            organic:       { name:'Organik (Genel)',           Wi:5.0,  rho:1600, SI_opt_min:1e-5,   SI_opt_max:1e-3,   color:'#a78bfa' },
+            // Karbon
+            cb:            { name:'Karbon Siyahı',            Wi:3.0,  rho:1800, SI_opt_min:1e-6,   SI_opt_max:5e-4,   color:'#475569' },
         };
         const DP_BEADS = {
             zro2:    { rho:6050, name:'ZrO₂/YTZ' },
@@ -3335,16 +4339,129 @@ document.getElementById('tabUygunluk').onclick = () => {
 
         let dpArchive = [];
 
+        function hsdCalc() {
+            const D_mm  = parseFloat(document.getElementById('hsd_bladeD').value);
+            const T_mm  = parseFloat(document.getElementById('hsd_tankD').value);
+            const N_rpm = parseFloat(document.getElementById('hsd_rpm').value);
+            const solidPct = parseFloat(document.getElementById('dp_solidPct').value) / 100;
+
+            // Uç hızı: TS = π·D(m)·N(rps)
+            const TS = Math.PI * (D_mm / 1000) * (N_rpm / 60);
+
+            // Blade/Tank oranı
+            const ratio = D_mm / T_mm;
+
+            // Ön karıştırma süresi tahmini
+            const concFactor = 1 + 2 * solidPct;
+            const t_pre = TS > 0 ? Math.max(5, (600 / TS) * concFactor) : 0;
+
+            // HSD sonrası d50 tahmini
+            const d50_after = TS >= 10 ? 4.0 : TS >= 7 ? 6.0 : 10.0;
+
+            // Durum
+            let tsColor, tsStatus;
+            if      (TS < 5)   { tsColor='#ef4444'; tsStatus='Çok düşük — islatma gerçekleşmez'; }
+            else if (TS < 10)  { tsColor='#f59e0b'; tsStatus='Düşük — yeterli ama optimum altı'; }
+            else if (TS <= 20) { tsColor='#22c55e'; tsStatus='OPTİMUM — 10–20 m/s ideal aralık'; }
+            else               { tsColor='#f59e0b'; tsStatus='Yüksek — hava karışması riski'; }
+
+            let ratioColor, ratioStatus;
+            if      (ratio < 0.25)  { ratioColor='#ef4444'; ratioStatus='Çok küçük — donut flow yok'; }
+            else if (ratio < 0.30)  { ratioColor='#f59e0b'; ratioStatus='Düşük — akış zayıf'; }
+            else if (ratio <= 0.40) { ratioColor='#22c55e'; ratioStatus='İdeal (0.30–0.40)'; }
+            else if (ratio <= 0.50) { ratioColor='#f59e0b'; ratioStatus='Yüksek — duvar çarpması riski'; }
+            else                    { ratioColor='#ef4444'; ratioStatus='Çok büyük — kullanılamaz'; }
+
+            // DOM güncelle
+            const tsEl = document.getElementById('hsd_ts');
+            tsEl.textContent = TS.toFixed(1) + ' m/s';
+            tsEl.style.color = tsColor;
+            document.getElementById('hsd_ts_status').textContent = tsStatus;
+            document.getElementById('hsd_ts_status').style.color = tsColor;
+
+            const ratioEl = document.getElementById('hsd_ratio');
+            ratioEl.textContent = ratio.toFixed(2);
+            ratioEl.style.color = ratioColor;
+            document.getElementById('hsd_ratio_status').textContent = ratioStatus;
+            document.getElementById('hsd_ratio_status').style.color = ratioColor;
+
+            document.getElementById('hsd_time').textContent = t_pre.toFixed(0) + ' dk';
+
+            const outEl = document.getElementById('hsd_out_d50');
+            outEl.textContent = '≈ ' + d50_after.toFixed(1) + ' µm';
+
+            const pushBtn = document.getElementById('hsd_pushBtn');
+            pushBtn.disabled = false;
+            pushBtn.style.background = '#7c3aed';
+
+            // Badge güncelle
+            const badge = document.getElementById('dp_mod1_badge');
+            badge.textContent = '✓ ' + t_pre.toFixed(0) + ' dk';
+            badge.style.cssText = 'background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);padding:2px 8px;border-radius:4px;font-size:9px';
+
+            // State'e kaydet
+            window._hsdResult = { TS, ratio, t_pre, d50_after };
+        }
+
+        function hsdPushToMod2() {
+            if (!window._hsdResult) return;
+            const feedEl = document.getElementById('dp_d50feed');
+            if (feedEl) {
+                feedEl.value = window._hsdResult.d50_after.toFixed(1);
+                // Mod2'yi aç
+                const body = document.getElementById('dp_mod2_body');
+                const arrow = document.getElementById('dp_mod2_arrow');
+                if (body && body.style.display === 'none') {
+                    body.style.display = '';
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
+                }
+                // Görsel bildirim
+                feedEl.style.border = '1px solid #7c3aed';
+                setTimeout(() => { feedEl.style.border = ''; }, 2000);
+            }
+        }
+
+        function dpToggle(bodyId, arrowId) {
+            const body = document.getElementById(bodyId);
+            const arrow = document.getElementById(arrowId);
+            if (!body || !arrow) return;
+            const isHidden = body.style.display === 'none';
+            body.style.display = isHidden ? '' : 'none';
+            arrow.style.transform = isHidden ? 'rotate(180deg)' : '';
+        }
+
+        function dpOnGlobalChange(fromPigSelect) {
+            if (fromPigSelect) {
+                const pigType = document.getElementById('dp_pigType').value;
+                const pig = DP_PIGMENTS[pigType];
+                if (pig) {
+                    const wiEl  = document.getElementById('dp_wi');
+                    const rhoEl = document.getElementById('dp_pigRho');
+                    if (wiEl)  { wiEl.value  = pig.Wi;  wiEl.style.border = '1px solid #7c3aed'; setTimeout(()=>{ wiEl.style.border  = ''; }, 1500); }
+                    if (rhoEl) { rhoEl.value = pig.rho; rhoEl.style.border = '1px solid #7c3aed'; setTimeout(()=>{ rhoEl.style.border = ''; }, 1500); }
+                }
+            }
+            ['dp_mod1_badge','dp_mod2_badge','dp_mod3_badge','dp_mod4_badge'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.textContent = '—'; el.style.cssText = 'background:rgba(100,116,139,0.2);color:#64748b;padding:2px 8px;border-radius:4px;font-size:9px'; }
+            });
+            ldUpdateDisplay();
+        }
+
         function dpGetParams() {
+            const pigType = document.getElementById('dp_pigType').value;
+            const pig = DP_PIGMENTS[pigType] || {};
             return {
-                pigType:   document.getElementById('dp_pigType').value,
+                pigType,
+                wi:        parseFloat(document.getElementById('dp_wi').value)     || pig.Wi  || 10,
+                pigRho:    parseFloat(document.getElementById('dp_pigRho').value) || pig.rho || 4200,
                 d50feed:   parseFloat(document.getElementById('dp_d50feed').value),
                 d50target: parseFloat(document.getElementById('dp_d50target').value),
                 batchKg:   parseFloat(document.getElementById('dp_batchKg').value),
                 solidPct:  parseFloat(document.getElementById('dp_solidPct').value)/100,
                 millType:  document.getElementById('dp_millType').value,
                 beadMat:   document.getElementById('dp_beadMat').value,
-                beadSize:  parseFloat(document.getElementById('dp_beadSize').value)/1000, // m
+                beadSize:  parseFloat(document.getElementById('dp_beadSize').value)/1000,
                 beadFill:  parseFloat(document.getElementById('dp_beadFill').value)/100,
                 tipSpeed:  parseFloat(document.getElementById('dp_tipSpeed').value),
                 millVol:   parseFloat(document.getElementById('dp_millVol').value),
@@ -3382,7 +4499,7 @@ document.getElementById('tabUygunluk').onclick = () => {
             // W = Wi × 10 × (1/√P - 1/√F) × η_bead
             // F, P: µm cinsinden d50  (Bond: mm, burada µm direkt kullanıyoruz, Wi µm bazlı kalibre)
             // Referans kalibrasyonu: TiO2 Wi=15, 1µm->0.3µm = ~50 kWh/t (Becker 2002)
-            const Em = pig.Wi * 10 * (1/Math.sqrt(p.d50target) - 1/Math.sqrt(p.d50feed)) * etaBond;
+            const Em = p.wi * 10 * (1/Math.sqrt(p.d50target) - 1/Math.sqrt(p.d50feed)) * etaBond;
 
             // ── Motor Güç Kontrolü ────────────────────────────────────────
             // P/V bead mill: ~0.5-3 kW/L (tipik)
@@ -3418,7 +4535,7 @@ document.getElementById('tabUygunluk').onclick = () => {
                     d50_cur = p.d50feed;
                 } else {
                     // Bond ters: d50 = (Wi*10*eta / Em_acc + 1/√d50feed)^-2
-                    const inv_sqrt = (pig.Wi * 10 * etaBond) / Em_acc + 1/Math.sqrt(p.d50feed);
+                    const inv_sqrt = (p.wi * 10 * etaBond) / Em_acc + 1/Math.sqrt(p.d50feed);
                     d50_cur = Math.max(p.d50target * 0.7, 1/(inv_sqrt*inv_sqrt));
                 }
                 curve.push({ pass, d50: d50_cur });
@@ -3574,7 +4691,7 @@ document.getElementById('tabUygunluk').onclick = () => {
                 </div>
                 <div class="flex justify-between p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
                     <span class="text-slate-400">Bond Wi (${pig.name})</span>
-                    <span class="mono text-slate-200">${pig.Wi} kWh/t</span>
+                    <span class="mono text-slate-200">${p.wi} kWh/t</span>
                 </div>
                 <div class="flex justify-between p-2 rounded-lg" style="background:rgba(0,0,0,0.3)">
                     <span class="text-slate-400">d_b kural (≤3×d_feed)</span>
@@ -3602,7 +4719,7 @@ document.getElementById('tabUygunluk').onclick = () => {
             if (r.Em_per_pass < 0.01) {
                 lines.push(`<p>💡 <strong>Debi çok yüksek:</strong> Pas başı enerji çok düşük (${r.Em_per_pass.toFixed(4)} kWh/t). Debisi azaltın veya değirmen hacmini artırın.</p>`);
             }
-            lines.push(`<p>✅ <strong>Teorik süre:</strong> ${r.t_min.toFixed(1)} dk (${r.t_hours.toFixed(2)} saat). Bond 3. Yasa, Wi=${r.pig.Wi} kWh/t, η=0.40.</p>`);
+            lines.push(`<p>✅ <strong>Teorik süre:</strong> ${r.t_min.toFixed(1)} dk (${r.t_hours.toFixed(2)} saat). Bond 3. Yasa, Wi=${p.wi} kWh/t, η=0.40.</p>`);
             lines.push(`<p>📊 <strong>Doğrulama:</strong> Bu hesap Becker (2002) TiO₂ deneysel verileriyle ±30% uyumludur. Kesin süre için pilot test önerilir.</p>`);
             el.innerHTML = lines.map(l=>`<div class="p-2 rounded-lg mb-2" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">${l}</div>`).join('');
         }
@@ -3650,31 +4767,899 @@ document.getElementById('tabUygunluk').onclick = () => {
             dpRenderSIAnalysis(r, p);
             dpRenderRecomm(r, p);
             dpRenderBeadGuide(p);
+
+            window._dpResult = { r, p };
+
+            // Mod2 badge
+            const badge2 = document.getElementById('dp_mod2_badge');
+            if (badge2) {
+                badge2.textContent = '✓ ' + r.Em.toFixed(0) + ' kWh/t';
+                badge2.style.cssText = 'background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);padding:2px 8px;border-radius:4px;font-size:9px';
+            }
         }
 
-        document.getElementById('dp_calcBtn').onclick = dpRunCalc;
-        document.getElementById('dp_resetBtn').onclick = () => {
+        // ── LETDOWN RİSK ANALİZİ (Modül 3) ─────────────────────────────
+        const LD_PIG_DATA = {
+            tio2:          { name:'TiO₂ Rutil',             diff:2, minDisp:10, rho:4200, anchor:'Hidroksil / Karboksil',              anchorDetail:'Polar yüzey → hidrojen bağı. Su bazlı için anyonik dispersant.' },
+            tio2_anatase:  { name:'TiO₂ Anastaz',           diff:2, minDisp:10, rho:3900, anchor:'Hidroksil / Karboksil',              anchorDetail:'Anataz polimorf, rutil kadar sert değil. Benzer dispersant stratejisi.' },
+            fe2o3:         { name:'Fe₂O₃ Kırmızı',          diff:2, minDisp:10, rho:4800, anchor:'Hidroksil / Karboksil',              anchorDetail:'Yüksek yoğunluk → çökelme dikkat. Polar yüzey, orta zorluk.' },
+            fe2o3_yellow:  { name:'Fe₂O₃ Sarı (FeOOH)',     diff:2, minDisp:12, rho:4000, anchor:'Hidroksil / Karboksil',              anchorDetail:'Goethit yapısı. Isıya hassas — 180°C üstünde kırmızıya döner.' },
+            fe2o3_transp:  { name:'Fe₂O₃ Transparan',       diff:3, minDisp:15, rho:3800, anchor:'Hidroksil / Fosfat',                 anchorDetail:'Nano boyutlu agrega. Yüksek yüzey alanı → daha fazla dispersant gerekir.' },
+            bivo4:         { name:'Bizmut Vanadat (PY184)', diff:3, minDisp:15, rho:6100, anchor:'Fosfat / Karboksil',                 anchorDetail:'Sert kristal, yüksek yoğunluk. Kurşunsuz sarı alternatif. Fosfat anchor önerilir.' },
+            chrome_yellow: { name:'Krom Sarı (PY34)',       diff:2, minDisp:10, rho:5900, anchor:'Karboksil / Fosfat',                 anchorDetail:'REACH ⚠️ Pb/Cr(VI) içerikli. Yüksek yoğunluk → çökelme riski.' },
+            molibdat:      { name:'Molibdat Oranj (PO21)',  diff:2, minDisp:12, rho:5800, anchor:'Karboksil / Fosfat',                 anchorDetail:'REACH ⚠️ Pb içerikli. Krom sarı ile benzer davranış, turuncu ton.' },
+            caco3:         { name:'CaCO₃ Kalsit',           diff:1, minDisp:5,  rho:2700, anchor:'Karboksil / Fosfat',                 anchorDetail:'Kolay ıslanır. Düşük dozaj yeterli.' },
+            baso4:         { name:'BaSO₄',                  diff:2, minDisp:8,  rho:4480, anchor:'Karboksil / Sülfat',                 anchorDetail:'Orta yoğunluk. Genel amaçlı dispersant çalışır.' },
+            phtalo_blue:   { name:'Ftalo Mavi (PB15)',       diff:4, minDisp:20, rho:1600, anchor:'Aromatik/Pirrol — N→metal bağ',      anchorDetail:'Apolar aromatik yüzey. Polimerik dispersant zorunlu. Letdown riski yüksek.' },
+            phtalo_green:  { name:'Ftalo Yeşil (PG7)',       diff:4, minDisp:20, rho:1900, anchor:'Aromatik/Pirrol — Cl grupları',      anchorDetail:'Klor içerikli yüzey, çok apolar. Güçlü polimerik dispersant gerekir.' },
+            dpp_red:       { name:'DPP Kırmızı (PR254)',     diff:5, minDisp:25, rho:1550, anchor:'Amid / Laktam Grubu',               anchorDetail:'Diketo-pirolo-pirol yapısı. En zor organiklerden biri. Yüksek renk kuvveti.' },
+            dpp_orange:    { name:'DPP Oranj (PO73)',        diff:5, minDisp:25, rho:1550, anchor:'Amid / Laktam Grubu',               anchorDetail:'Diketo-pirolo-pirol. DPP kırmızı ile benzer zorluk. Flokulasyon riski yüksek.' },
+            quinacridone:  { name:'Kinakridon (PV19)',        diff:5, minDisp:22, rho:1500, anchor:'Amid Grubu / NH köprüsü',           anchorDetail:'Apolar yüzey. NH grupları intramoleküler H bağı yapar. Güçlü dispersant şart.' },
+            organic:       { name:'Organik (Genel)',          diff:4, minDisp:20, rho:1600, anchor:'Aromatik Halkalar (Van der Waals)',  anchorDetail:'Apolar yüzey → özel dispersant zorunlu. Letdown riski yüksek.' },
+            cb:            { name:'Karbon Siyahı',           diff:4, minDisp:25, rho:1800, anchor:'Amin Grupları',                     anchorDetail:'Güçlü kimyasal adsorpsiyon gerekli. Amin bazlı dispersant şart.' },
+        };
+
+        function ldRiskColor(score) {
+            if (score <= 20) return { color:'#22c55e', label:'Düşük',    bg:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.3)' };
+            if (score <= 45) return { color:'#f59e0b', label:'Orta',     bg:'rgba(245,158,11,0.1)',  border:'rgba(245,158,11,0.3)' };
+            if (score <= 70) return { color:'#f97316', label:'Yüksek',   bg:'rgba(249,115,22,0.1)',  border:'rgba(249,115,22,0.3)' };
+            return              { color:'#ef4444', label:'KRİTİK',   bg:'rgba(239,68,68,0.1)',   border:'rgba(239,68,68,0.3)' };
+        }
+
+        function ldSetRiskCard(scoreId, labelId, badgeId, score, detailText) {
+            const rc = ldRiskColor(score);
+            const el = document.getElementById(scoreId);
+            el.textContent = score;
+            el.style.color = rc.color;
+            document.getElementById(labelId).textContent = detailText;
+            const badge = document.getElementById(badgeId);
+            badge.textContent = rc.label;
+            badge.style.color = rc.color;
+        }
+
+        function ldCalc() {
+            const pigType  = document.getElementById('dp_pigType').value;
+            const baseType = document.getElementById('dp_baseType').value;
+            const d50mill  = parseFloat(document.getElementById('ld_d50mill').value);
+            const dispPct  = parseFloat(document.getElementById('ld_dispersantPct').value);
+            const solMatch = document.getElementById('ld_solventMatch').value;
+            const tempDelt = parseFloat(document.getElementById('ld_tempDelta').value);
+            const ldRate   = document.getElementById('ld_letdownRate').value;
+
+            const pig = LD_PIG_DATA[pigType] || LD_PIG_DATA['organic'];
+            const pigRhoInput = parseFloat(document.getElementById('dp_pigRho').value);
+            const pigRho = (!isNaN(pigRhoInput) && pigRhoInput > 0) ? pigRhoInput : pig.rho;
+
+            // 1. Solvent uyumsuzluğu riski
+            const solventRisk = { same: 5, similar: 35, different: 85 }[solMatch];
+            const solventDetail = {
+                same:      'Aynı baz → adsorbe dispersant stabil kalır',
+                similar:   'Benzer polar yapı → orta risk, test önerilir',
+                different: 'Farklı baz → dispersant pigment yüzeyinden soyulabilir (floating!)',
+            }[solMatch];
+
+            // 2. Sıcaklık şoku riski
+            let tempRisk, tempDetail;
+            if (tempDelt <= 5)       { tempRisk = 5;  tempDetail = `ΔT=${tempDelt}°C — ideal, risk yok`; }
+            else if (tempDelt <= 15) { tempRisk = 30; tempDetail = `ΔT=${tempDelt}°C — kabul edilebilir, dikkatli ekle`; }
+            else if (tempDelt <= 30) { tempRisk = 65; tempDetail = `ΔT=${tempDelt}°C — yüksek! Letdownı ısıt, yavaş ekle`; }
+            else                     { tempRisk = 90; tempDetail = `ΔT=${tempDelt}°C — KRİTİK: viskozite şoku, agglomerasyon`; }
+
+            // 3. Re-flokülasyon riski (dispersant dozu + pigment zorluğu + parçacık boyutu)
+            const minD = pig.minDisp;
+            let dispScore;
+            if      (dispPct < minD * 0.5) dispScore = 90;
+            else if (dispPct < minD)       dispScore = 60;
+            else if (dispPct < minD * 2.5) dispScore = 10;
+            else                           dispScore = 35; // aşırı dozaj da riskli
+            const fineBonus = d50mill < 0.5 ? 15 : 0; // ince partiküller daha kolay flokülasyon
+            const floculRisk = Math.min(100, Math.round(pig.diff * 12 + dispScore * 0.55 + fineBonus));
+            const floculDetail = dispPct < minD
+                ? `Dozaj yetersiz (${dispPct}% < min ${minD}%) → re-flokülasyon kaçınılmaz`
+                : dispPct > minD * 2.5
+                ? `Aşırı dozaj (${dispPct}%) → viskozite yükselir, köpük riski`
+                : `Dozaj yeterli (${dispPct}%, min ${minD}%)`;
+
+            // 4. Floating / çökelme riski
+            const mediumRho = baseType === 'water' ? 1000 : 900;
+            const deltaRho = pigRho - mediumRho;
+            // Stokes: küçük partiküller çok yavaş çöker; Brownian <1 µm pratik çökelme yok
+            const brownianOffset = d50mill < 0.5 ? -30 : d50mill < 1 ? -15 : 0;
+            const floatRisk = Math.min(95, Math.max(5, Math.round(deltaRho / 45 + brownianOffset + 10)));
+            const floatDetail = d50mill < 0.5
+                ? `d₅₀=${d50mill}µm — Brownian hareket çökelmeyi frenler (düşük risk)`
+                : `Δρ=${deltaRho} kg/m³, d₅₀=${d50mill}µm — Stokes çökmesi olası`;
+
+            // Letdown hız çarpanı
+            const rateMult = { slow: 0.7, medium: 1.0, fast: 1.4 }[ldRate];
+
+            // Genel risk skoru (ağırlıklı ortalama × hız çarpanı)
+            const overall = Math.min(100, Math.round(
+                (solventRisk * 0.30 + tempRisk * 0.20 + floculRisk * 0.30 + floatRisk * 0.20) * rateMult
+            ));
+            const rc = ldRiskColor(overall);
+
+            // DOM güncelle — ana kart
+            document.getElementById('ld_overallPct').textContent = overall;
+            document.getElementById('ld_overallPct').style.color = rc.color;
+            document.getElementById('ld_overallLabel').textContent = rc.label + ' Risk';
+            document.getElementById('ld_overallLabel').style.color = rc.color;
+            const mainCard = document.getElementById('ld_mainCard');
+            mainCard.style.background = rc.bg;
+            mainCard.style.borderColor = rc.border;
+
+            // 4 alt risk
+            ldSetRiskCard('ld_solventScore','ld_solventLabel','ld_solventBadge', solventRisk, solventDetail);
+            ldSetRiskCard('ld_tempScore',   'ld_tempLabel',   'ld_tempBadge',    tempRisk,    tempDetail);
+            ldSetRiskCard('ld_floculScore', 'ld_floculLabel', 'ld_floculBadge',  floculRisk,  floculDetail);
+            ldSetRiskCard('ld_floatScore',  'ld_floatLabel',  'ld_floatBadge',   floatRisk,   floatDetail);
+
+            // Çapa grubu kartı
+            document.getElementById('ld_anchorText').textContent = pig.anchor;
+            document.getElementById('ld_anchorDetail').textContent = pig.anchorDetail;
+
+            // Doz kontrolü kartı
+            const doseOk = dispPct >= minD && dispPct <= minD * 2.5;
+            const doseColor = doseOk ? '#4ade80' : dispPct < minD ? '#f87171' : '#f59e0b';
+            document.getElementById('ld_dispDoseContent').innerHTML = `
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-400">Mevcut dozaj</span>
+                    <span class="mono font-black" style="color:${doseColor}">${dispPct}% pigment ağırlığı</span>
+                </div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-400">Minimum önerilen</span>
+                    <span class="mono text-slate-300">${minD}%</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Optimum aralık</span>
+                    <span class="mono text-slate-300">${minD}–${minD*2.5}%</span>
+                </div>
+                <p class="mt-2 text-[9px]" style="color:${doseColor}">${
+                    doseOk ? '✓ Dozaj optimum aralıkta' :
+                    dispPct < minD ? '✗ YETERSİZ — re-flokülasyon riski' :
+                    '⚠ Aşırı dozaj — viskozite / köpük riski'
+                }</p>`;
+
+            // Öneri listesi
+            const recs = [];
+            if (solMatch === 'different')
+                recs.push({ c:'#f87171', t:'Letdown solventini pasta baziyle uyumlu seç (aynı polar yapı).' });
+            if (tempDelt > 15)
+                recs.push({ c:'#f97316', t:`Letdown materyalini pasta sıcaklığına ısıt (ΔT hedef &lt;5°C).` });
+            if (dispPct < minD)
+                recs.push({ c:'#f87171', t:`Dispersant dozajını ${minD}%'e çıkar (mevcut: ${dispPct}%).` });
+            if (ldRate === 'fast')
+                recs.push({ c:'#f59e0b', t:'Letdownu tek seferde dökme — aşamalı ekle ve ara karıştır.' });
+            if (d50mill < 0.5 && floculRisk > 40)
+                recs.push({ c:'#f59e0b', t:'İnce partiküller (&lt;0.5µm) yüzey enerjisi yüksek → dispersant adsorpsiyonunu doğrula.' });
+            if (baseType === 'water' && (pigType === 'organic' || pigType === 'cb'))
+                recs.push({ c:'#f97316', t:'Su bazlı sistemde organik/CB pigment → elektrosterik dispersant kullan (elektrostatik tek başına yetmez).' });
+            if (overall <= 20)
+                recs.push({ c:'#4ade80', t:'Tüm parametreler kontrol altında — rutin prosedür yeterli.' });
+
+            document.getElementById('ld_recommList').innerHTML = recs.length
+                ? recs.map(r => `<div class="p-2 rounded-lg" style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05)">
+                        <span style="color:${r.c}">→</span> <span class="text-slate-300">${r.t}</span></div>`).join('')
+                : '<p class="text-slate-500 italic">Belirgin risk faktörü tespit edilmedi.</p>';
+
+            // Badge güncelle
+            const badge = document.getElementById('dp_mod3_badge');
+            badge.textContent = rc.label + ' ' + overall;
+            badge.style.cssText = `background:${rc.bg};color:${rc.color};border:1px solid ${rc.border};padding:2px 8px;border-radius:4px;font-size:9px`;
+        }
+
+        // Letdown base/pig display güncelleme
+        function ldUpdateDisplay() {
+            const pigType  = document.getElementById('dp_pigType').value;
+            const baseType = document.getElementById('dp_baseType').value;
+            const pig = LD_PIG_DATA[pigType];
+            const baseEl = document.getElementById('ld_baseDisplay');
+            const pigEl  = document.getElementById('ld_pigDisplay');
+            if (baseEl) baseEl.textContent = baseType === 'water' ? 'Su bazlı' : 'Solvent bazlı';
+            if (pigEl && pig)  pigEl.textContent = pig.name;
+        }
+
+        const _dpCalcBtn = document.getElementById('dp_calcBtn');
+        if (_dpCalcBtn) _dpCalcBtn.onclick = dpRunCalc;
+        const _dpResetBtn = document.getElementById('dp_resetBtn');
+        if (_dpResetBtn) _dpResetBtn.onclick = () => {
             ['dp_siVal','dp_emVal','dp_timeVal','dp_passVal','dp_pnet','dp_pvMill','dp_emPerPass'].forEach(id=>{
-                document.getElementById(id).innerText='--';
+                const el = document.getElementById(id); if (el) el.innerText='--';
             });
-            const ctx1=document.getElementById('dp_chart').getContext('2d');
-            ctx1.clearRect(0,0,1000,300);
-            const ctx2=document.getElementById('dp_siChart').getContext('2d');
-            ctx2.clearRect(0,0,1000,300);
-            document.getElementById('dp_siAnalysis').innerHTML='<div class="text-center py-8 text-slate-600"><p>Hesapla butonuna basın</p></div>';
-            document.getElementById('dp_recomm').innerHTML='<p class="text-slate-500 italic">Hesaplama sonrası öneriler burada görünecek.</p>';
+            const _c1 = document.getElementById('dp_chart');
+            if (_c1) { const ctx1=_c1.getContext('2d'); ctx1.clearRect(0,0,1000,300); }
+            const _c2 = document.getElementById('dp_siChart');
+            if (_c2) { const ctx2=_c2.getContext('2d'); ctx2.clearRect(0,0,1000,300); }
+            const _sia = document.getElementById('dp_siAnalysis');
+            if (_sia) _sia.innerHTML='<div class="text-center py-8 text-slate-600"><p>Hesapla butonuna basın</p></div>';
+            const _rec = document.getElementById('dp_recomm');
+            if (_rec) _rec.innerHTML='<p class="text-slate-500 italic">Hesaplama sonrası öneriler burada görünecek.</p>';
         };
-        document.getElementById('dp_tipSpeed').oninput = function() {
-            document.getElementById('dp_tipLabel').innerText = parseFloat(this.value).toFixed(1) + ' m/s';
+        const _dpTipSpeed = document.getElementById('dp_tipSpeed');
+        if (_dpTipSpeed) _dpTipSpeed.oninput = function() {
+            const lbl = document.getElementById('dp_tipLabel');
+            if (lbl) lbl.innerText = parseFloat(this.value).toFixed(1) + ' m/s';
         };
-        document.getElementById('dp_saveBtn').onclick = () => {
+        const _dpSaveBtn = document.getElementById('dp_saveBtn');
+        if (_dpSaveBtn) _dpSaveBtn.onclick = () => {
             showToast('Karşılaştırma özelliği yakında eklenecek', '#6366f1');
         };
+
+        // ── MALİYET & ENERJİ ANALİZİ (Modül 4) ─────────────────────────
+        const CE_TARIFFS = {
+            ag_3faz: {
+                rate: 4.81,
+                note: 'EPDK Nisan 2026 — AG sanayi 3 faz: <strong class="text-green-400">~4.81 ₺/kWh</strong> (KDV hariç). Zamlanırsa buradan güncelle.',
+                info: '<strong>3 Faz AG:</strong> Motor ve ekipman beslemesi için standart. Boya tesislerinin çoğu bu tarife ile bağlıdır. Güç 50 kVA altındaysa tek fazlı sayaç yeterli olabilir, ama endüstriyel motorlarda 3 faz zorunludur.',
+            },
+            og: {
+                rate: 3.55,
+                note: 'EPDK Nisan 2026 — OG sanayi (OSB dahil): <strong class="text-green-400">~3.40–3.70 ₺/kWh</strong> (KDV hariç). Fatura kesim dönemine göre değişebilir.',
+                info: '<strong>Orta Gerilim OG:</strong> Trafo kurma maliyeti var ama birim fiyat daha düşük. Büyük OSB tesislerinde standart. Transformatör bakım + kapasite bedeli hesaba katılmalı.',
+            },
+            serbest: {
+                rate: 4.20,
+                note: 'Serbest piyasa fiyatı sözleşmeye göre değişir — ortalama tahmini değer girildi. Tedarikçi faturanı kontrol et.',
+                info: '<strong>Serbest Piyasa:</strong> Lisanslı tedarikçilerden fiyat teklifleri alınır. Genellikle AG/OG arasında değişir, uzun süreli sözleşmede avantaj sağlanabilir.',
+            },
+            custom: {
+                rate: null,
+                note: 'Manuel değer — kendi fatura birim fiyatını gir (KDV dahil/hariç olduğuna dikkat et).',
+                info: '<strong>Manuel Giriş:</strong> Faturandaki "Enerji Bedeli" + "Dağıtım Bedeli" toplamını kullan. KDV ve BTV hariç net ₺/kWh değeri önerilir.',
+            },
+        };
+
+        function ceSetTariff(type) {
+            const t = CE_TARIFFS[type];
+            if (!t) return;
+            const rateEl = document.getElementById('ce_electricityRate');
+            const noteEl = document.getElementById('ce_rateNote');
+            const infoEl = document.getElementById('ce_tariffInfo');
+            if (t.rate !== null) rateEl.value = t.rate;
+            if (noteEl) noteEl.innerHTML = t.note;
+            if (infoEl) infoEl.innerHTML = t.info;
+        }
+
+        function ceCalc() {
+            const elecRate  = parseFloat(document.getElementById('ce_electricityRate').value);
+            const hsdKw     = parseFloat(document.getElementById('ce_hsdKw').value);
+            const beadWear  = parseFloat(document.getElementById('ce_beadWearRate').value); // g/ton
+            const beadPrice = parseFloat(document.getElementById('ce_beadPrice').value);    // ₺/kg
+            const laborCost = parseFloat(document.getElementById('ce_laborCost').value);    // ₺/saat
+            const scaleupVol= parseFloat(document.getElementById('ce_scaleupVol').value);  // L
+
+            const batchKg   = parseFloat(document.getElementById('dp_batchKg').value);
+
+            // ── Enerji hesabı ─────────────────────────────────────────────
+            // HSD: motor gücü × süre / ton
+            const hsdResult = window._hsdResult;
+            const t_hsd_h   = hsdResult ? hsdResult.t_pre / 60 : 0;
+            const Em_hsd    = t_hsd_h > 0 ? hsdKw * t_hsd_h / (batchKg / 1000) : 0;
+
+            // Bead Mill: Em doğrudan Modül 2 hesabından (stored in _dpResult)
+            const dpRes     = window._dpResult;
+            const Em_mill   = dpRes ? dpRes.r.Em   : 0;
+            const t_mill_h  = dpRes ? dpRes.r.t_hours : 0;
+            const P_mill    = dpRes ? dpRes.r.P_net : 0;
+            const millVol   = dpRes ? dpRes.p.millVol : 1;
+
+            const Em_total  = Em_hsd + Em_mill;
+            const CO2_FACTOR = 0.45;
+            const co2       = Em_total * CO2_FACTOR;
+
+            // ── Maliyet hesabı ────────────────────────────────────────────
+            const cost_elec  = Em_total * elecRate;
+            const cost_bead  = (beadWear / 1000) * beadPrice; // ₺/ton (g/ton → kg/ton × ₺/kg)
+            const t_total_h  = t_hsd_h + t_mill_h;
+            const cost_labor = t_total_h > 0 ? (laborCost * t_total_h) / (batchKg / 1000) : 0;
+            const cost_total = cost_elec + cost_bead + cost_labor;
+            const cost_batch = cost_total * (batchKg / 1000);
+
+            // ── P/V değerlendirmesi ───────────────────────────────────────
+            const PV = millVol > 0 ? P_mill / millVol : 0;
+            let pvColor, pvStatus;
+            if      (PV < 0.1)  { pvColor='#ef4444'; pvStatus='Çok düşük — yetersiz öğütme, boncuklar durur'; }
+            else if (PV < 0.5)  { pvColor='#f59e0b'; pvStatus='Düşük — optimum altı, süre uzar'; }
+            else if (PV <= 3.0) { pvColor='#22c55e'; pvStatus='OPTİMUM — tipik endüstri aralığı (0.5–3 kW/L)'; }
+            else if (PV <= 6.0) { pvColor='#f59e0b'; pvStatus='Yüksek — aşırı ısı, boncuk aşınması artar'; }
+            else                { pvColor='#ef4444'; pvStatus='KRİTİK — soğutma yetmez, hasar riski'; }
+            const pvBarPct = Math.min(100, (PV / 6) * 100);
+
+            // ── Scale-up (x=0 dispersiyon → sabit P/V) ───────────────────
+            const P_scaleup = PV * scaleupVol; // kW
+
+            // ── DOM güncelle ──────────────────────────────────────────────
+            const fmt = (v, d=1) => isFinite(v) && v > 0 ? v.toFixed(d) : '—';
+
+            document.getElementById('ce_emHsd').textContent    = fmt(Em_hsd)  + ' kWh/t';
+            document.getElementById('ce_emMill').textContent   = fmt(Em_mill) + ' kWh/t';
+            document.getElementById('ce_emTotal').textContent  = fmt(Em_total)+ ' kWh/t';
+            document.getElementById('ce_co2').textContent      = fmt(co2)     + ' kg CO₂/t';
+
+            document.getElementById('ce_costElec').textContent  = fmt(cost_elec,0)  + ' ₺/t';
+            document.getElementById('ce_costBead').textContent  = fmt(cost_bead,0)  + ' ₺/t';
+            document.getElementById('ce_costLabor').textContent = fmt(cost_labor,0) + ' ₺/t';
+            document.getElementById('ce_costTotal').textContent = fmt(cost_total,0) + ' ₺/t';
+            document.getElementById('ce_batchKgLabel').textContent = batchKg;
+            document.getElementById('ce_costBatch').textContent = fmt(cost_batch,0) + ' ₺';
+
+            const pvEl = document.getElementById('ce_pvVal');
+            pvEl.textContent = PV > 0 ? PV.toFixed(2) : '—';
+            pvEl.style.color = pvColor;
+            document.getElementById('ce_pvStatus').textContent  = PV > 0 ? pvStatus : '— Modül 2 önce hesaplanmalı';
+            document.getElementById('ce_pvStatus').style.color  = pvColor;
+            document.getElementById('ce_pvBar').style.width     = pvBarPct + '%';
+            document.getElementById('ce_pvBar').style.background= pvColor;
+
+            document.getElementById('ce_suVolCur').textContent    = millVol > 0 ? millVol.toFixed(1) + ' L' : '—';
+            document.getElementById('ce_suPVcur').textContent     = PV > 0 ? PV.toFixed(2) + ' kW/L' : '—';
+            document.getElementById('ce_suVolTarget').textContent = scaleupVol.toLocaleString() + ' L';
+            document.getElementById('ce_suPtarget').textContent   = P_scaleup > 0 ? P_scaleup.toFixed(1) + ' kW' : '—';
+
+            // Badge güncelle
+            const badge4 = document.getElementById('dp_mod4_badge');
+            if (badge4 && cost_total > 0) {
+                badge4.textContent = '₺ ' + Math.round(cost_total) + '/t';
+                badge4.style.cssText = 'background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3);padding:2px 8px;border-radius:4px;font-size:9px';
+            }
+        }
+
+        // Letdown display ilk yükleme
+        ldUpdateDisplay();
+
+        // Pervane & Süspansiyon tank seçici (TANK_DB bu blokta tanımlı)
+        mixBuildTankSelector();
 
         // ============================================================
         // CFD ENGINE v2 — Loaded from external modules
         // ============================================================
         // (Engine, Renderer, and UI Controller loaded via <script> tags)
+
+        // ── HELP_PAGES — 4 tab için teknik yardım içeriği ────────────
+        const HELP_PAGES = {
+
+          mixing: {
+            title: 'Karıştırma & Süspansiyon — Teknik Yardım',
+            subtitle: 'Pervane seçimi · Reynolds · Güç · Njs · Karıştırma süresi',
+            icon: 'fas fa-rotate text-orange-400',
+            iconBg: 'rgba(249,115,22,0.15)',
+            tabs: [
+              { id:'genel', label:'Genel Bakış', content: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#fb923c">Bu Tab Ne Yapar?</span>
+  <div class="h-title text-white">Karıştırma Simülatörü — Amaç ve Kapsam</div>
+  <p class="h-body">Bu sekme, endüstriyel boya üretiminde kullanılan karıştırma tanklarının homojenizasyon performansını ve pigment süspansiyon yeterliliğini değerlendirir. Kullanıcı pervane tipi, tank geometrisi ve çalışma koşullarını girerek:</p>
+  <ul class="h-body mt-2 list-disc list-inside space-y-1">
+    <li><strong>t₉₅ karıştırma süresi</strong> — tankın %95 homojenliğe ulaşması için gereken süre</li>
+    <li><strong>Reynolds sayısı</strong> — akış rejimi (laminar/geçiş/türbülanslı)</li>
+    <li><strong>Motor güç tüketimi</strong> — P = Np × ρ × N³ × D⁵</li>
+    <li><strong>Uç hızı</strong> — boya kalitesini etkileyen kritik parametre</li>
+    <li><strong>Njs — minimum süspansiyon hızı</strong> — pigmentin tank dibine çökmemesi için gereken RPM</li>
+    <li><strong>Verimlilik skoru</strong> — 0–100 bileşik performans değerlendirmesi</li>
+  </ul>
+</div>
+<hr class="h-divider">
+<div class="grid gap-4" style="grid-template-columns:1fr 1fr">
+  <div class="h-card h-card-green">
+    <span class="h-label" style="color:#4ade80">Dispersiyon İçin</span>
+    <p class="h-body">Yüksek uç hızı (10–20 m/s) ve Cowles diski. Pigment ıslatma ve aglomerat kırma aşaması. HSD (High Speed Disperser) rejimi.</p>
+  </div>
+  <div class="h-card h-card-purple">
+    <span class="h-label" style="color:#c4b5fd">Homojenizasyon İçin</span>
+    <p class="h-body">Düşük-orta uç hızı (1–5 m/s) ve akış pervanesi. Bileşenlerin homojen karışması. Njs ≥ çalışma RPM koşulu.</p>
+  </div>
+</div>
+<div class="h-card mt-4" style="background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.2)">
+  <span class="h-label" style="color:#fbbf24">Fizik Sınırları</span>
+  <p class="h-body">Bu simülasyon 2B parçacık takip modeli kullanır. Gerçek CFD değil — yönelimsel sonuç verir. Kesin sonuç için <strong>CFD sekmesini</strong> veya pilot test kullanın. Tekrarlanabilirlik: ±%10–15.</p>
+</div>
+              ` },
+              { id:'girdiler', label:'Girdi Alanları', content: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#60a5fa">Girdi Alanları Rehberi</span>
+  <div class="h-title text-white">Her Parametre Ne Anlama Gelir?</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Pervane Tipi</p>
+    <div class="grid gap-2 mt-2" style="grid-template-columns:1fr 1fr">
+      <div><p class="text-xs font-bold text-orange-400">Marine Propeller</p><p class="h-body text-xs">Np=0.35, aksiyel akış. Standart boya karıştırma. D/T=0.3–0.4 kuralı.</p></div>
+      <div><p class="text-xs font-bold text-green-400">Hydrofoil</p><p class="h-body text-xs">Np=0.30, en düşük güç. Düşük yoğunluk boyalar. Enerji verimli.</p></div>
+      <div><p class="text-xs font-bold text-red-400">Cowles Diski</p><p class="h-body text-xs">Np=0.45, yüksek kesme. Dispersiyon aşaması. Homojenizasyon için uygun değil.</p></div>
+      <div><p class="text-xs font-bold text-purple-400">Lenart Diski</p><p class="h-body text-xs">Np=0.55, vorteks akışı. Toz ekleme aşaması. Yüksek viskozite.</p></div>
+      <div><p class="text-xs font-bold text-orange-300">Düz Palet</p><p class="h-body text-xs">Np=2.10, radyal akış. Çok yüksek viskoziteli bazlar. Düşük RPM gerekir.</p></div>
+      <div><p class="text-xs font-bold text-pink-400">Anchor</p><p class="h-body text-xs">Np=0.40, duvar sıyırıcı. Isı transferi. Reolojik (akma sınırı yüksek) boyalar.</p></div>
+    </div>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Tank & Geometri</p>
+    <table class="w-full mt-2 text-xs">
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400 w-40">Tank Çapı T</td><td class="py-1 text-slate-300">Silindirik tank iç çapı. H/T ≈ 1.0–1.2 optimal. H/T > 1.5 → ikinci pervane gerekir.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Sıvı Yüksekliği H</td><td class="py-1 text-slate-300">Dolgulu sıvı yüksekliği. Hacim = π/4 × T² × H.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Pervane Çapı D</td><td class="py-1 text-slate-300">Kural: D = T/3. Küçük D → az tork, büyük D → yüksek güç tüketimi.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Pervane Yüksekliği C</td><td class="py-1 text-slate-300">Tankın dibinden pervane merkezine mesafe. C = T/4 tipik.</td></tr>
+      <tr><td class="py-1 text-slate-400">RPM</td><td class="py-1 text-slate-300">Dönüş hızı. Re ve güç hesabını etkiler. Uç hızı = π × D × N / 60.</td></tr>
+    </table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Boya Özellikleri</p>
+    <table class="w-full mt-2 text-xs">
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400 w-40">Yoğunluk ρ (kg/m³)</td><td class="py-1 text-slate-300">Su bazlı boya ≈ 1100–1400. Solvent bazlı ≈ 900–1100. Re ve Njs hesabında kullanılır.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Viskozite μ (mPa·s)</td><td class="py-1 text-slate-300">Su ≈ 1 mPa·s. Düşük visc boya ≈ 100–500. Yüksek visc baz ≈ 5000–50000. Re hesabını doğrudan etkiler.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Pigment Yoğunluğu ρ_p</td><td class="py-1 text-slate-300">Sadece pigment malzemesinin öz yoğunluğu (pasta değil). TiO₂=4200, Fe₂O₃=4800, CB=1800 kg/m³.</td></tr>
+      <tr><td class="py-1 text-slate-400">Pigment Yükü wt%</td><td class="py-1 text-slate-300">Formüldeki dibe çöken tüm katıların ağırlık yüzdesi. Organikler hafif → hesaba katmayın. TiO₂+CaCO₃+Fe₂O₃ toplayın.</td></tr>
+    </table>
+  </div>
+</div>
+              ` },
+              { id:'formulas', label:'Formüller & Fizik', content: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#60a5fa">Temel Formüller</span>
+  <div class="h-title text-white">Reynolds, Güç, Karıştırma Süresi, Njs</div>
+</div>
+<div class="space-y-4 mt-4">
+  <div class="h-card" style="border-color:rgba(99,102,241,0.3)">
+    <p class="font-black text-indigo-300 text-sm mb-2">Reynolds Sayısı — Akış Rejimi</p>
+    <div class="h-formula">Re = ρ · N · D² / μ</div>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Re Değeri</th><th class="text-left text-slate-400">Rejim</th><th class="text-left text-slate-400">Boya Etkisi</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&lt; 10</td><td class="py-1 text-green-400">Laminar</td><td class="py-1 text-slate-400">Yüksek visc. Diffüzyon karışması.</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">10 – 10.000</td><td class="py-1 text-yellow-400">Geçiş</td><td class="py-1 text-slate-400">Tahmin zor. Grenville için Re&gt;10k gerekir.</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&gt; 10.000</td><td class="py-1 text-orange-400">Türbülanslı</td><td class="py-1 text-slate-400">Hızlı karışma. t₉₅ korelasyonu geçerli.</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(249,115,22,0.3)">
+    <p class="font-black text-orange-300 text-sm mb-2">Karıştırma Süresi — Grenville (2004)</p>
+    <div class="h-formula">t₉₅ = 5.40 · Np^(1/3) · (T/D)² / N</div>
+    <p class="h-body text-xs mt-2">Sadece türbülanslı rejimde (Re &gt; 10.000) ve H/T ≈ 1 baffled tankta geçerlidir. t₉₉ = 1.537 × t₉₅. Kaynaklar: Grenville &amp; Nienow (2004), Ruszkowski (1994).</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(168,85,247,0.3)">
+    <p class="font-black text-purple-300 text-sm mb-2">Motor Güç Tüketimi</p>
+    <div class="h-formula">P = Np · ρ · N³ · D⁵</div>
+    <p class="h-body text-xs mt-2">Np: pervane tipine özgü sabit (boyutsuz). Uç hızı: v_tip = π · D · N. Boya dispersiyon: 1 HP/10 galon → ~75 W/L. Homojenizasyon: 1 HP/100 galon → ~7.5 W/L.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(34,197,94,0.3)">
+    <p class="font-black text-green-300 text-sm mb-2">Njs — Minimum Süspansiyon Hızı (Zwietering 1958)</p>
+    <div class="h-formula">Njs = S · ν^0.1 · dp^0.2 · [(ρ_p−ρ_L)·g/ρ_L]^0.45 · X^0.13 / D^0.85</div>
+    <p class="h-body text-xs mt-2">S: pervane geometrisine bağlı Zwietering sabiti (propeller ≈ 7, Rushton ≈ 5). Pigmentin tank dibinde hiçbir noktada 1–2 saniyeden fazla durmaması için gereken minimum hız. Bu RPM altında pigment çöker → renk sapması → homojen olmayan ürün.</p>
+    <p class="h-body text-xs mt-1" style="color:#64748b">ν: kinematik viskozite (m²/s) · dp: partikül çapı (m) · X: pigment yükü (wt%) · g=9.81 m/s²</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(251,146,60,0.2)">
+    <p class="font-black text-orange-400 text-sm mb-2">Uç Hızı</p>
+    <div class="h-formula">v_tip = π · D(m) · N(dev/s)</div>
+    <p class="h-body text-xs mt-2">Dispersiyon: 10–20 m/s (4000–6000 FPM). Homojenizasyon: 1–5 m/s. Aşırı yüksek uç hızı → hava karışması, pigment bozunması.</p>
+  </div>
+</div>
+              ` },
+              { id:'sonuclar', label:'Sonuçları Yorumlama', content: `
+<div class="h-card h-card-blue">
+  <span class="h-label" style="color:#60a5fa">Sonuç Yorumlama</span>
+  <div class="h-title text-white">Hesaplama Çıktıları Ne Anlama Gelir?</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(249,115,22,0.25)">
+    <p class="font-black text-orange-300 text-sm">Verimlilik Skoru (0–100)</p>
+    <p class="h-body mt-1">Dört bileşenden oluşan ağırlıklı skor:</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Bileşen</th><th class="text-left text-slate-400">Ağırlık</th><th class="text-left text-slate-400">Kaynak</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Homojenlik (mixedness)</td><td class="py-1 text-orange-400">%40</td><td class="py-1 text-slate-500">Parçacık simülasyonu</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Reynolds rejimi</td><td class="py-1 text-orange-400">%25</td><td class="py-1 text-slate-500">Re &gt; 10k → tam puan</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Pompalama verimliliği</td><td class="py-1 text-orange-400">%20</td><td class="py-1 text-slate-500">Nq/Np oranı</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Pigment süspansiyon</td><td class="py-1 text-orange-400">%15</td><td class="py-1 text-slate-500">RPM ≥ Njs → tam puan</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(34,197,94,0.2)">
+    <p class="font-black text-green-300 text-sm">t₉₅ Karıştırma Süresi</p>
+    <p class="h-body mt-1">Tankın %95 homojenliğe ulaşması için gereken süre (dakika).<br>
+    <strong class="text-green-300">İyi:</strong> &lt;5 dak (boya endüstrisi standardı)<br>
+    <strong class="text-yellow-400">Kabul edilebilir:</strong> 5–15 dak<br>
+    <strong class="text-red-400">Kötü:</strong> &gt;15 dak → RPM artırın veya pervane değiştirin.</p>
+    <p class="h-body mt-1 text-xs" style="color:#64748b">Sınır: Sadece türbülanslı rejimde hesaplanabilir. Laminar için Grenville formülü geçersiz.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(239,68,68,0.2)">
+    <p class="font-black text-red-400 text-sm">Njs — Pigment Süspansiyon</p>
+    <p class="h-body mt-1">Hesaplanan Njs değeri mevcut RPM ile karşılaştırılır:<br>
+    <strong class="text-green-400">Mevcut RPM ≥ Njs:</strong> Pigment askıda — tüm tank homojen<br>
+    <strong class="text-red-400">Mevcut RPM &lt; Njs:</strong> Pigment dibe çöküyor — alttan/ortadan/üstten alınan numuneler farklı renk verir!</p>
+    <p class="h-body mt-1 text-xs" style="color:#64748b">Endüstri standardı: N ≥ 1.1 × Njs güvenli çalışma için. N &gt; 1.5 × Njs → enerji israfı.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)">
+    <p class="font-black text-slate-200 text-sm">Akış Simülasyonu</p>
+    <p class="h-body mt-1">Her iki renk parçacığı (A ve B) karıştığında <strong>homojenlik yüzdesi</strong> artar. Parçacıklar renk kaybederse karışma tamamlanmıştır. Ölü bölgeler parçacıkların yavaş hareket ettiği köşelerdir.</p>
+  </div>
+</div>
+              ` },
+              { id:'refs', label:'Literatür', content: helpContent.refs || `
+<div class="h-card h-card-blue"><span class="h-label">Kaynaklar</span><div class="h-title text-white">Karıştırma Modeli Referansları</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Grenville & Nienow (2004)</p><p class="h-body text-xs mt-1">Blending of Miscible Liquids. Handbook of Industrial Mixing, Ch.1. Wiley-Blackwell. t₉₅ korelasyonu, K=5.2 sabiti.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Zwietering (1958)</p><p class="h-body text-xs mt-1">Suspending of Solid Particles in Liquid by Agitators. Chem. Eng. Sci. 8:244–253. Njs korelasyonu.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Rushton, Costich & Everett (1950)</p><p class="h-body text-xs mt-1">Power Characteristics of Mixing Impellers. Chem. Eng. Prog. 46:395–476. Np hesabının temeli.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Nienow (1997)</p><p class="h-body text-xs mt-1">On Impeller Circulation and Mixing Effectiveness in the Turbulent Flow Regime. Chem. Eng. Sci. 52(15):2557–2565.</p></div>
+</div>
+              ` },
+            ]
+          },
+
+          dispersion: {
+            title: 'Dispersiyon — Teknik Yardım',
+            subtitle: 'HSD · Bead Mill · Letdown · Bond (1952) · Kwade (1999)',
+            icon: 'fas fa-circle-nodes text-purple-400',
+            iconBg: 'rgba(168,85,247,0.15)',
+            tabs: [
+              { id:'genel', label:'Genel Bakış', content: `
+<div class="h-card h-card-purple">
+  <span class="h-label" style="color:#c4b5fd">Bu Tab Ne Yapar?</span>
+  <div class="h-title text-white">3 Aşamalı Pigment Dispersiyon Süreci</div>
+  <p class="h-body">Pigmentin boyaya dağıtılması üç fiziksel aşamadan oluşur. Bu sekme her aşamayı ayrı modülle simüle eder:</p>
+</div>
+<div class="grid gap-3 mt-4" style="grid-template-columns:1fr 1fr 1fr">
+  <div class="h-card" style="border-color:rgba(124,58,237,0.4)">
+    <p class="font-black text-purple-300 text-xs uppercase tracking-wider">Modül 1 — HSD</p>
+    <p class="font-bold text-white text-sm mt-1">Islanma & Aglomerat Kırma</p>
+    <p class="h-body text-xs mt-2">Cowles diski yüksek uç hızıyla (10–20 m/s) pigment yüzeyini bağlayıcıyla ıslatır. Enerji: 40–50 kJ/mol. Fiziksel temas ve zayıf Van der Waals bağları kırılır.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.4)">
+    <p class="font-black text-orange-300 text-xs uppercase tracking-wider">Modül 2 — Bead Mill</p>
+    <p class="font-bold text-white text-sm mt-1">Agrega Kırma (Öğütme)</p>
+    <p class="h-body text-xs mt-2">Yüksek enerji (600–1000 kJ/mol). Bond 3. Yasa + Kwade SI ile hesaplanır. Kimyasal bağlı agregaları kırar. Hedef d₅₀ 0.2–2 µm.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(20,184,166,0.4)">
+    <p class="font-black text-teal-300 text-xs uppercase tracking-wider">Modül 3-4 — Letdown</p>
+    <p class="font-bold text-white text-sm mt-1">Stabilizasyon & Risk</p>
+    <p class="h-body text-xs mt-2">Dispersant pigment yüzeyine bağlanır. Letdown (inceltme) sırasında re-flokülayon riski. Çözelti, sıcaklık ve hız faktörleri analiz edilir.</p>
+  </div>
+</div>
+<hr class="h-divider">
+<div class="h-card" style="border-color:rgba(245,158,11,0.2)">
+  <p class="font-black text-yellow-300 text-sm">Aglomerat vs Agrega — Kritik Fark</p>
+  <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400 w-32">Yapı</th><th class="text-left text-slate-400">Bağ Tipi</th><th class="text-left text-slate-400">Kırma Enerjisi</th><th class="text-left text-slate-400">Alet</th></tr>
+  <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Aglomerat</td><td class="py-1 text-slate-300">Fiziksel / Van der Waals</td><td class="py-1 text-green-400">40–50 kJ/mol</td><td class="py-1 text-purple-300">HSD yeterli</td></tr>
+  <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Agrega</td><td class="py-1 text-slate-300">Kimyasal (kalsinasyon)</td><td class="py-1 text-red-400">600–1000 kJ/mol</td><td class="py-1 text-orange-300">Bead mill zorunlu</td></tr>
+  <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Primer Parçacık</td><td class="py-1 text-slate-300">Kristal bağı</td><td class="py-1 text-red-600">&gt;10.000 kJ/mol</td><td class="py-1 text-slate-500">Ulaşılamaz</td></tr></table>
+</div>
+              ` },
+              { id:'hsd', label:'Modül 1 — HSD', content: `
+<div class="h-card h-card-purple">
+  <span class="h-label" style="color:#c4b5fd">High Speed Disperser</span>
+  <div class="h-title text-white">Ön Karıştırma — Islanma & Aglomerat Kırma</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(124,58,237,0.3)">
+    <p class="font-black text-purple-300 text-sm">Amaç ve Fizik</p>
+    <p class="h-body mt-2">HSD (Cowles tipi disk), yüksek uç hızı ile slurry içinde güçlü kesme kuvveti oluşturur. Pigment yüzeyindeki hava köpüklerini iter, bağlayıcıyı pigment yüzeyine iter (ıslanma). Aglomeratlar (fiziksel temas) kırılır — aggregatlar (kimyasal bağ) KIRILAMAZ.</p>
+    <div class="h-formula mt-3">v_tip = π × D_blade(m) × N(dev/s)</div>
+    <p class="h-body text-xs mt-1">HSD için optimal: 10–20 m/s (4000–6000 FPM). Altında → ıslanma yok. Üstünde → hava karışması, köpük.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Blade/Tank Oranı — Kritik Kural</p>
+    <div class="h-formula mt-2">D_blade = D_tank / 3</div>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Oran D/T</th><th class="text-left text-slate-400">Etki</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&lt; 0.25</td><td class="py-1 text-red-400">Donuts akışı oluşmaz. Dispersiyon yetersiz.</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">0.30–0.40</td><td class="py-1 text-green-400">İdeal. Efektif donuts akışı. Tüm slurry sirküle eder.</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&gt; 0.50</td><td class="py-1 text-yellow-400">Duvar çarpması. Aşırı güç tüketimi.</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">HSD Çıkışı → Bead Mill Girişi</p>
+    <p class="h-body mt-1">HSD sonrası tahmini d₅₀: uç hızına göre ~4–10 µm. Bu değer otomatik olarak Modül 2'ye (Bead Mill) besleme d₅₀ olarak aktarılabilir. "Modül 2'ye Aktar" butonu kullanın.</p>
+    <p class="h-body mt-1 text-xs" style="color:#64748b">Kaynak: Evonik Dispersant Chemistry Wiki, high-speed-disperser.md</p>
+  </div>
+</div>
+              ` },
+              { id:'beadmill', label:'Modül 2 — Bead Mill', content: `
+<div class="h-card h-card-orange">
+  <span class="h-label" style="color:#fdba74">Bead Mill</span>
+  <div class="h-title text-white">Agrega Kırma — Bond 3. Yasa + Kwade SI</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)">
+    <p class="font-black text-orange-300 text-sm">Stres Yoğunluğu — Kwade (1999)</p>
+    <div class="h-formula mt-2">SI = ρ_boncuk × d_b³ × v_tip²  [Nm]</div>
+    <p class="h-body text-xs mt-2">Bir boncuğun pigment agglomeratına uyguladığı mekanik enerji. <strong class="text-white">SI optimumu = pigmentin kırılma direnci.</strong></p>
+    <ul class="h-body text-xs mt-2 list-disc list-inside space-y-1">
+      <li>SI &lt; SI_opt_min → agglomerat kırılmaz, verim sıfır</li>
+      <li>SI ≈ SI_opt → maksimum verimli öğütme</li>
+      <li>SI &gt; SI_opt_max → primer boyuta iner, enerji israfı, pigment zarar</li>
+    </ul>
+    <p class="h-body text-xs mt-2" style="color:#64748b">d_b küple etkilediğinden boncuk boyutu SI'nin en güçlü parametresidir. Kaynak: Kwade A. (1999) Powder Technology 105:14-20</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)">
+    <p class="font-black text-orange-300 text-sm">Spesifik Enerji — Bond 3. Yasa (1952)</p>
+    <div class="h-formula mt-2">Em = Wi × 10 × (1/√d_hedef − 1/√d_feed) × η  [kWh/t]</div>
+    <p class="h-body text-xs mt-2">Ton başına gereken toplam öğütme enerjisi. Wi = Bond Work Index (kırılma direnci). η = bead mill Bond verimi (≈0.40).</p>
+    <div class="mt-2 p-2 rounded" style="background:rgba(0,0,0,0.3)">
+      <p class="text-xs text-slate-400">⚠ Hedef d₅₀ yarıya indiğinde Em yaklaşık 4× artar! Gerçekçi hedef seçin.</p>
+    </div>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Değirmen Tipleri ve Verimi</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Tip</th><th class="text-left text-slate-400">η</th><th class="text-left text-slate-400">Avantaj</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Annular Gap</td><td class="py-1 text-green-400">0.95</td><td class="py-1 text-slate-400">En iyi verim, dar RTD, nano için</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Yatay Diskli</td><td class="py-1 text-green-400">0.92</td><td class="py-1 text-slate-400">Endüstri standardı, temizleme kolay</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Pin Mill</td><td class="py-1 text-yellow-400">0.90</td><td class="py-1 text-slate-400">Yüksek enerji yoğunluğu</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-200">Dikey</td><td class="py-1 text-orange-400">0.85</td><td class="py-1 text-slate-400">Düşük maliyet, basit yapı</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Boncuk Seçim Kuralı</p>
+    <div class="h-formula">d_boncuk ≤ 3 × d₅₀_feed</div>
+    <p class="h-body text-xs mt-2">Boncuk çok büyük → temas noktası az, SI fazla. Boncuk çok küçük → SI düşük, filtre tıkanması. ZrO₂/YTZ (ρ=6050 kg/m³) yüksek SI için en yaygın seçim.</p>
+  </div>
+</div>
+              ` },
+              { id:'letdown', label:'Modül 3-4: Letdown', content: `
+<div class="h-card h-card-teal">
+  <span class="h-label" style="color:#2dd4bf">Letdown & Dispersant</span>
+  <div class="h-title text-white">Stabilizasyon ve İnceltme Risk Analizi</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(20,184,166,0.3)">
+    <p class="font-black text-teal-300 text-sm">Dispersant Nedir? Neden Gerekli?</p>
+    <p class="h-body mt-2">Pigment partikülleri öğütüldükten sonra yeniden bir araya gelmeye (flokülasyon) eğilimlidir. Dispersant iki görev yapar:</p>
+    <ol class="h-body text-xs mt-2 list-decimal list-inside space-y-1">
+      <li><strong>Anchor grubu</strong> pigment yüzeyine güçlü bağlanır</li>
+      <li><strong>Polimerik zincir (kuyruk)</strong> partiküller arası fiziksel bariyer oluşturur (sterik stabilizasyon)</li>
+    </ol>
+    <table class="w-full mt-3 text-xs"><tr><th class="text-left text-slate-400 w-32">Pigment Tipi</th><th class="text-left text-slate-400">Uygun Anchor</th><th class="text-left text-slate-400">Min. Dozaj</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">TiO₂ (inorganik)</td><td class="py-1 text-slate-400">Hidroksil / Karboksil</td><td class="py-1 text-green-400">%10–12</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Fe₂O₃ (inorganik)</td><td class="py-1 text-slate-400">Fosfat / Karboksil</td><td class="py-1 text-green-400">%10–15</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Ftalo (organik)</td><td class="py-1 text-slate-400">Aromatik / Pirrol</td><td class="py-1 text-yellow-400">%18–22</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">DPP (organik)</td><td class="py-1 text-slate-400">Amid / Laktam</td><td class="py-1 text-red-400">%22–28</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Karbon Siyahı</td><td class="py-1 text-slate-400">Amin</td><td class="py-1 text-red-400">%22–28</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(239,68,68,0.25)">
+    <p class="font-black text-red-300 text-sm">Letdown Risk Faktörleri</p>
+    <p class="h-body text-xs mt-1">Letdown = pasta + solvent/bağlayıcı ile seyrelme. Risk faktörleri:</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Risk</th><th class="text-left text-slate-400">Açıklama</th><th class="text-left text-slate-400">Ağırlık</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Solvent uyumsuzluğu</td><td class="py-1 text-slate-400">Farklı baz → dispersant pigmetten ayrılır</td><td class="py-1 text-orange-400">%30</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Sıcaklık şoku</td><td class="py-1 text-slate-400">ΔT&gt;15°C → viskozite değişimi</td><td class="py-1 text-orange-400">%20</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Dispersant dozajı</td><td class="py-1 text-slate-400">Yetersiz → reflokülasyon</td><td class="py-1 text-orange-400">%30</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Çökelme (Stokes)</td><td class="py-1 text-slate-400">Δρ × d₅₀ → ağır partiküller çöker</td><td class="py-1 text-orange-400">%20</td></tr></table>
+  </div>
+</div>
+              ` },
+              { id:'formulas', label:'Formüller Özeti', content: `
+<div class="h-card h-card-orange">
+  <span class="h-label" style="color:#fdba74">Dispersiyon Formülleri</span>
+  <div class="h-title text-white">Tüm Hesaplama Denklemleri</div>
+</div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(168,85,247,0.3)"><p class="font-black text-purple-300 text-sm">Stres Yoğunluğu (Kwade 1999)</p><div class="h-formula mt-1">SI = ρ_b [kg/m³] × d_b³ [m³] × v_t² [m²/s²]  →  [Nm]</div></div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)"><p class="font-black text-orange-300 text-sm">Spesifik Öğütme Enerjisi (Bond 1952)</p><div class="h-formula mt-1">Em = Wi × 10 × (1/√d_P − 1/√d_F) × η_bead  [kWh/t]</div><p class="h-body text-xs mt-1">d_P = hedef d₅₀ (µm) · d_F = besleme d₅₀ (µm) · η_bead ≈ 0.40</p></div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)"><p class="font-black text-orange-300 text-sm">İşlem Süresi (Batch)</p><div class="h-formula mt-1">t = Em [kWh/t] × m_batch [t] / P_net [kW]  →  [saat]</div></div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)"><p class="font-black text-orange-300 text-sm">Pas Başı Enerji (Sürekli Mod)</p><div class="h-formula mt-1">E_pas = P_net × (V_mill/Q_debi) / m_batch  [kWh/t]</div><p class="h-body text-xs mt-1">V_mill: değirmen hacmi [L] · Q_debi: akış debisi [L/dak]</p></div>
+  <div class="h-card" style="border-color:rgba(234,88,12,0.3)"><p class="font-black text-orange-300 text-sm">HSD Uç Hızı</p><div class="h-formula mt-1">v_tip = π × D_blade [m] × N [dev/s]  →  [m/s]</div><p class="h-body text-xs mt-1">FPM = RPM × 0.262 × D(inch). Dispersiyon: 4000–6000 FPM = 20–30 m/s.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-black text-slate-300 text-sm">Ölçek Büyütme (P/V = sabit)</p><div class="h-formula mt-1">P₂ = P/V_opt × V₂  →  P/V tipik: 0.5–3 kW/L</div></div>
+</div>
+              ` },
+              { id:'refs', label:'Literatür', content: `
+<div class="h-card h-card-blue"><span class="h-label">Kaynaklar</span><div class="h-title text-white">Dispersiyon Modeli Referansları</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Kwade A. (1999)</p><p class="h-body text-xs mt-1">Wet comminution in stirred media mills. Powder Technology 105:14–20. SI = ρ_b × d_b³ × v_t² formülünün kaynağı.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Bond F.C. (1952)</p><p class="h-body text-xs mt-1">The Third Theory of Comminution. Trans. AIME 193:484–494. Em = Wi × 10 × (1/√P − 1/√F) formülünün kaynağı.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Becker et al. (2002)</p><p class="h-body text-xs mt-1">Comminution in stirred media mills — TiO₂ deneysel doğrulaması. Powder Technology 127:29–38. η=0.40 Bond verimliliğinin kaynağı.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Evonik Industries (2018)</p><p class="h-body text-xs mt-1">Dispersant Chemistry — Pigment Dispersiyon İlkeleri. Dispersant anchor grupları ve stabilizasyon mekanizmaları.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">PCI Magazine (2011)</p><p class="h-body text-xs mt-1">Grinding Media Selection for Bead Mills. Bond Wi referans değerleri ve boncuk seçim kriterleri.</p></div>
+</div>
+              ` },
+            ]
+          },
+
+          uygunluk: {
+            title: 'Tank Uygunluk Analizi — Teknik Yardım',
+            subtitle: '221 tank envanteri · H/D oranı · Pervane uyumu · Boya tipi eşleştirme',
+            icon: 'fas fa-warehouse text-green-400',
+            iconBg: 'rgba(34,197,94,0.15)',
+            tabs: [
+              { id:'genel', label:'Genel Bakış', content: `
+<div class="h-card h-card-green">
+  <span class="h-label" style="color:#4ade80">Bu Tab Ne Yapar?</span>
+  <div class="h-title text-white">Üretim Tankı Uygunluk Analizi</div>
+  <p class="h-body">Boya Üretim 1 tesisindeki <strong class="text-white">221 karıştırma tankının</strong> envanter verisi bu sekmede bulunmaktadır. Kullanıcı üretmek istediği boya türünü seçtiğinde, sistem her tankı değerlendirir ve en uygun seçenekleri önerir.</p>
+</div>
+<hr class="h-divider">
+<div class="grid gap-4 mt-2" style="grid-template-columns:1fr 1fr">
+  <div class="h-card h-card-green">
+    <p class="font-black text-green-300 text-sm">Değerlendirilen Parametreler</p>
+    <ul class="h-body text-xs mt-2 list-disc list-inside space-y-1">
+      <li>H/D oranı (derinlik/çap)</li>
+      <li>Pervane tipi ve kapasite</li>
+      <li>Motor gücü (kW)</li>
+      <li>Hacim (kullanılabilir litre)</li>
+      <li>Tesis konumu</li>
+      <li>Boya tipi uyumluluğu</li>
+    </ul>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Veri Kaynağı</p>
+    <p class="h-body text-xs mt-2">Excel tablosundan parse edilmiş gerçek üretim envanteri. Tank ID, tesis, tip, hacim, motor, pervane tipi, RPM max ve H/D verilerini içerir.</p>
+    <p class="h-body text-xs mt-2" style="color:#64748b">Kaynak: Boya Üretim 1 Tesisi Tank Envanteri (2026)</p>
+  </div>
+</div>
+              ` },
+              { id:'kriterler', label:'Değerlendirme Kriterleri', content: `
+<div class="h-card h-card-green"><span class="h-label" style="color:#4ade80">Kriter Sistemi</span><div class="h-title text-white">Her Tank Nasıl Puanlanır?</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(34,197,94,0.3)">
+    <p class="font-black text-green-300 text-sm">H/D Oranı — Geometri Kriteri</p>
+    <div class="h-formula mt-2">H/D = Sıvı Yüksekliği / Tank İç Çapı</div>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">H/D</th><th class="text-left text-slate-400">Değerlendirme</th><th class="text-left text-slate-400">Öneri</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">0.8 – 1.2</td><td class="py-1 text-green-400">Optimal</td><td class="py-1 text-slate-400">Tek pervane yeterli, homojen akış</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">1.2 – 1.5</td><td class="py-1 text-yellow-400">Kabul edilebilir</td><td class="py-1 text-slate-400">İkinci pervane düşünülebilir</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&gt; 1.5</td><td class="py-1 text-red-400">Sorunlu</td><td class="py-1 text-slate-400">İkinci pervane zorunlu, stratifikasyon riski</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&lt; 0.6</td><td class="py-1 text-yellow-400">Geniş/sığ</td><td class="py-1 text-slate-400">Vorteks kontrolü gerekli</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Pervane Tipi Uyumu</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400 w-36">Boya Tipi</th><th class="text-left text-slate-400">Uygun Pervane</th><th class="text-left text-slate-400">Uygunsuz</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Su bazlı ince</td><td class="py-1 text-green-400">Hydrofoil, Propeller</td><td class="py-1 text-red-400">Anchor</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Solvent bazlı</td><td class="py-1 text-green-400">Propeller, PBT</td><td class="py-1 text-yellow-400">Cowles</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Yüksek visc. baz</td><td class="py-1 text-green-400">Anchor, Palet</td><td class="py-1 text-red-400">Hydrofoil</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Dispersiyon pastası</td><td class="py-1 text-green-400">Cowles, Lenart</td><td class="py-1 text-red-400">Propeller</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.08)">
+    <p class="font-black text-slate-200 text-sm">Güç / Hacim Kriteri</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">P/V (W/L)</th><th class="text-left text-slate-400">Uygulama</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">5–20 W/L</td><td class="py-1 text-green-400">Standart homojenizasyon</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">20–75 W/L</td><td class="py-1 text-yellow-400">Pigmentli boya, dispersiyon</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">&gt;75 W/L</td><td class="py-1 text-orange-400">Yüksek yük, disperser</td></tr></table>
+  </div>
+</div>
+              ` },
+              { id:'renkler', label:'Renk Kodlaması', content: `
+<div class="h-card h-card-green"><span class="h-label" style="color:#4ade80">Renk Kodu Sistemi</span><div class="h-title text-white">Yeşil / Sarı / Kırmızı Ne Anlama Gelir?</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(34,197,94,0.4);background:rgba(34,197,94,0.05)">
+    <p class="font-black text-green-400 text-sm flex items-center gap-2"><i class="fas fa-check-circle"></i> YEŞİL — Önerilen Tank</p>
+    <p class="h-body mt-1">Tüm kriterler karşılanıyor. H/D optimal, pervane tipi uygun, güç yeterli. Bu tank birinci tercih olmalı.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.05)">
+    <p class="font-black text-yellow-400 text-sm flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> SARI — Şartlı Kullanım</p>
+    <p class="h-body mt-1">Çoğu kriter karşılanıyor ama bir ya da birkaç parametre ideal aralığın dışında. Kullanılabilir, ancak dikkat gerektirir. Örneğin H/D biraz yüksek veya pervane ikinci tercih.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.05)">
+    <p class="font-black text-red-400 text-sm flex items-center gap-2"><i class="fas fa-times-circle"></i> KIRMIZI — Uygun Değil</p>
+    <p class="h-body mt-1">Kritik kriterler karşılanmıyor. Geometri uyumsuz, güç yetersiz veya pervane tipi yanlış. Bu tankı seçili boya tipi için kullanmayın.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)">
+    <p class="font-black text-slate-300 text-sm">Skor Hesabı</p>
+    <p class="h-body mt-1 text-xs">Her tank için 0–100 bileşik skor hesaplanır: H/D ağırlık %35, pervane uyumu %30, güç yeterliliği %20, tesis erişimi %15. ≥70 yeşil, 40–70 sarı, &lt;40 kırmızı.</p>
+  </div>
+</div>
+              ` },
+              { id:'refs', label:'Literatür', content: `
+<div class="h-card h-card-blue"><span class="h-label">Kaynaklar</span><div class="h-title text-white">Tank Seçim Kriterleri Referansları</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Paul, Atiemo-Obeng & Kresta (2004)</p><p class="h-body text-xs mt-1">Handbook of Industrial Mixing. Wiley-Blackwell. Tank geometrisi ve H/D kriterleri.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Nienow (1997)</p><p class="h-body text-xs mt-1">On Impeller Circulation and Mixing Effectiveness. Pervane seçim kriterleri ve P/V normları.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Boya Üretim 1 Tesisi Envanteri (2026)</p><p class="h-body text-xs mt-1">221 tank, gerçek ölçüm ve envanter verileri. Tank ID, hacim, motor, pervane, H/D tablosu.</p></div>
+</div>
+              ` },
+            ]
+          },
+
+          cfd: {
+            title: 'CFD Simülasyonu — Teknik Yardım',
+            subtitle: '2D Eksenel Simetri · Adveksiyon-Difüzyon · Akış Görselleştirme',
+            icon: 'fas fa-wind text-cyan-400',
+            iconBg: 'rgba(34,211,238,0.15)',
+            tabs: [
+              { id:'genel', label:'Genel Bakış', content: `
+<div class="h-card" style="border-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.05)">
+  <span class="h-label" style="color:#22d3ee">CFD Sekmesi</span>
+  <div class="h-title text-white">2D Akış Alanı Simülasyonu</div>
+  <p class="h-body">Bu sekme, silindirik karıştırma tankındaki akış alanını 2 boyutlu eksenel simetrik model ile hesaplar. Gerçek 3D CFD'ye göre çok daha hızlı çalışır ama temel akış yapısını doğru gösterir.</p>
+</div>
+<hr class="h-divider">
+<div class="grid gap-4 mt-2" style="grid-template-columns:1fr 1fr">
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Ne Gösterir?</p>
+    <ul class="h-body text-xs mt-2 list-disc list-inside space-y-1">
+      <li>Akış hız vektörleri</li>
+      <li>Akım çizgileri (streamlines)</li>
+      <li>Hız profili (r-z düzlemi)</li>
+      <li>Döngü yapısı (üst/alt)</li>
+      <li>Ölü bölge riski</li>
+    </ul>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)">
+    <p class="font-black text-slate-200 text-sm">Kullanım Amacı</p>
+    <ul class="h-body text-xs mt-2 list-disc list-inside space-y-1">
+      <li>Pervane konumu optimizasyonu</li>
+      <li>H/D etkisini görselleştirme</li>
+      <li>Ölü bölge tespiti</li>
+      <li>Akış rejimi kontrolü</li>
+      <li>İkinci pervane ihtiyacı</li>
+    </ul>
+  </div>
+</div>
+<div class="h-card mt-3" style="border-color:rgba(245,158,11,0.2)">
+  <p class="font-black text-yellow-300 text-sm">Sınırlar</p>
+  <p class="h-body mt-1">2D eksenel simetri → 3D asimetrik etkiler (baffle, nozul) yansıtılmaz. Türbülans basitleştirilmiştir. Reoloji (non-Newtonian) dahil değildir. Yönelimsel sonuç — sayısal doğruluk için gerçek CFD kullanın.</p>
+</div>
+              ` },
+              { id:'model', label:'Model Açıklaması', content: `
+<div class="h-card" style="border-color:rgba(34,211,238,0.3)"><span class="h-label" style="color:#22d3ee">Fizik Modeli</span><div class="h-title text-white">2D Eksenel Simetrik ADE (Adveksiyon-Difüzyon)</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Temel Denklem</p>
+    <div class="h-formula mt-2">∂c/∂t + u·∂c/∂r + v·∂c/∂z = D_eff(∂²c/∂r² + ∂²c/∂z²)</div>
+    <p class="h-body text-xs mt-2">c: konsantrasyon · u,v: radyal ve aksiyel hız bileşenleri · D_eff: efektif difüzyon katsayısı (türbülanslı: D_t = k²/ε). Sonlu fark yöntemi (FDM) ile çözülür.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Akış Alanı</p>
+    <p class="h-body mt-2">Akış hız alanı, pervane tipine ve geometrik parametrelere göre analitik akış fonksiyonundan türetilir. Pervane pompalama sayısı (Nq) ve Np, akış yapısını belirler.</p>
+    <table class="w-full mt-2 text-xs"><tr><th class="text-left text-slate-400">Pervane</th><th class="text-left text-slate-400">Akış Tipi</th><th class="text-left text-slate-400">Döngü</th></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Propeller / Hydrofoil</td><td class="py-1 text-slate-400">Aksiyel — aşağı iter</td><td class="py-1 text-green-400">Tek büyük döngü</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Rushton / Palet</td><td class="py-1 text-slate-400">Radyal — dışa iter</td><td class="py-1 text-yellow-400">Üst + alt döngü</td></tr>
+    <tr class="border-t border-slate-700"><td class="py-1 text-slate-300">Cowles</td><td class="py-1 text-slate-400">Radyal/Kesme</td><td class="py-1 text-orange-400">Yüksek kesme, sınırlı döngü</td></tr></table>
+  </div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)">
+    <p class="font-black text-slate-300 text-sm">Sayısal Yöntem</p>
+    <p class="h-body text-xs mt-1">Sonlu fark (FDM), r-z düzleminde düzenli ızgara. Zaman adımı: CFL koşulu. Pol sınırı (r=0): simetri koşulu. Duvar: no-slip. Yüzey: serbest yüzey varsayımı.</p>
+    <p class="h-body text-xs mt-1" style="color:#64748b">Kaynak: 2d-axisymmetric-ade.md, lattice-boltzmann.md (wiki)</p>
+  </div>
+</div>
+              ` },
+              { id:'parametreler', label:'Parametreler', content: `
+<div class="h-card" style="border-color:rgba(34,211,238,0.3)"><span class="h-label" style="color:#22d3ee">Girdi Parametreleri</span><div class="h-title text-white">CFD Hesabı İçin Ne Girilir?</div></div>
+<div class="space-y-2 mt-4">
+  <table class="w-full text-xs">
+    <tr class="border-b border-slate-700"><th class="text-left py-2 text-slate-400 w-40">Parametre</th><th class="text-left py-2 text-slate-400">Açıklama</th><th class="text-left py-2 text-slate-400 w-32">Tipik Aralık</th></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Tank çapı T</td><td class="py-2 text-slate-400">Silindirik iç çap</td><td class="py-2 text-slate-300">0.3 – 3 m</td></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Sıvı yüksekliği H</td><td class="py-2 text-slate-400">Dolu su yüksekliği</td><td class="py-2 text-slate-300">H/T = 0.8–1.5</td></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Pervane çapı D</td><td class="py-2 text-slate-400">Kanat ucu çapı</td><td class="py-2 text-slate-300">D/T = 0.25–0.45</td></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Pervane konumu C</td><td class="py-2 text-slate-400">Tabandan yükseklik</td><td class="py-2 text-slate-300">C/T = 0.20–0.35</td></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Dönüş hızı N</td><td class="py-2 text-slate-400">RPM</td><td class="py-2 text-slate-300">50 – 3000 RPM</td></tr>
+    <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Pervane tipi</td><td class="py-2 text-slate-400">Akış karakteristiği</td><td class="py-2 text-slate-300">—</td></tr>
+    <tr><td class="py-2 text-slate-200">Viskozite μ</td><td class="py-2 text-slate-400">Boya dinamik viskozitesi</td><td class="py-2 text-slate-300">1 – 50.000 mPa·s</td></tr>
+  </table>
+</div>
+              ` },
+              { id:'yorum', label:'Sonuçları Yorumlama', content: `
+<div class="h-card" style="border-color:rgba(34,211,238,0.3)"><span class="h-label" style="color:#22d3ee">Görsel Yorumlama</span><div class="h-title text-white">CFD Çıktıları Nasıl Okunur?</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Hız Renk Haritası (Üst Görünüm)</p>
+    <p class="h-body mt-1">Renk = hız büyüklüğü. <strong class="text-red-400">Kırmızı/turuncu</strong> → yüksek hız (pervane yakını). <strong class="text-blue-400">Mavi/siyah</strong> → düşük hız (ölü bölge adayı). İdeal: tüm tank bölgelerinde makul hız, ölü bölge yok.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Akım Çizgileri (Yan Görünüm)</p>
+    <p class="h-body mt-1">Akışın izlediği yollar. <strong class="text-green-400">Kapalı, büyük döngü</strong> → iyi sirkülasyon. <strong class="text-red-400">Küçük, yerel döngüler</strong> → kötü sirkülasyon. Aksiyel pervane: tek büyük döngü arzu edilir.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(34,211,238,0.2)">
+    <p class="font-black text-cyan-300 text-sm">Radyal Hız Profili</p>
+    <p class="h-body mt-1">R=0 (merkez) → R=T/2 (duvar) arasında hız dağılımı. Merkez hızı düşük, pervane çevresinde zirve, duvarda düşme. Profil simetrik ve düzenli olmalı.</p>
+  </div>
+  <div class="h-card" style="border-color:rgba(239,68,68,0.2)">
+    <p class="font-black text-red-300 text-sm">Ölü Bölge Tespiti</p>
+    <p class="h-body mt-1">Uzun süre boyunca hız ≈ 0 olan bölgeler ölü bölgedir. Belirtileri:</p>
+    <ul class="h-body text-xs mt-1 list-disc list-inside space-y-1">
+      <li>Üst köşelerde veya taban merkezinde durgun bölge</li>
+      <li>Akım çizgilerinin o bölgeyi pas geçmesi</li>
+      <li>Renk haritasında kalıcı mavi/koyu alan</li>
+    </ul>
+    <p class="h-body text-xs mt-2">Çözüm: RPM artırın, pervane konumunu değiştirin (C/T düşürün) veya ikinci pervane ekleyin.</p>
+  </div>
+</div>
+              ` },
+              { id:'refs', label:'Literatür & Sınırlar', content: `
+<div class="h-card h-card-blue"><span class="h-label">Kaynaklar & Sınırlar</span><div class="h-title text-white">CFD Modeli Referansları</div></div>
+<div class="space-y-3 mt-4">
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Pope S.B. (2000)</p><p class="h-body text-xs mt-1">Turbulent Flows. Cambridge University Press. k-ε türbülans modelinin temeli.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Patankar S.V. (1980)</p><p class="h-body text-xs mt-1">Numerical Heat Transfer and Fluid Flow. Hemisphere. FDM sayısal yöntemin kaynağı.</p></div>
+  <div class="h-card" style="border-color:rgba(255,255,255,0.07)"><p class="font-bold text-slate-200 text-sm">Ranade V.V. (2002)</p><p class="h-body text-xs mt-1">Computational Flow Modeling for Chemical Reactor Engineering. Academic Press. Eksenel simetrik tank akış modelleri.</p></div>
+  <div class="h-card" style="border-color:rgba(245,158,11,0.25)">
+    <p class="font-black text-yellow-300 text-sm">Model Sınırları</p>
+    <ul class="h-body text-xs mt-1 list-disc list-inside space-y-1">
+      <li>2D eksenel simetri — baffle etkisi yok</li>
+      <li>Newtonian sıvı varsayımı (reoloji dahil değil)</li>
+      <li>Sabit yoğunluk (sıkıştırılamaz)</li>
+      <li>Serbest yüzey dinamiği basitleştirilmiş</li>
+      <li>Çok fazlı akış (hava, köpük) yok</li>
+    </ul>
+  </div>
+</div>
+              ` },
+            ]
+          },
+
+        }; // END HELP_PAGES
 
         // Tab switching — CFD tab is handled in cfd-ui.js
         // Other tab switches need to stop CFD
@@ -3682,6 +5667,51 @@ document.getElementById('tabUygunluk').onclick = () => {
             const existing = document.getElementById(id);
             if (existing) existing.addEventListener('click', () => { if (typeof CFD !== 'undefined' && CFD.running) cfdStopSim(); });
         });
+
+        // ── Tooltip Engine ────────────────────────────────────────────
+        (function() {
+            const box = document.createElement('div');
+            box.id = 'dp_tooltip_box';
+            document.body.appendChild(box);
+
+            function showTip(el) {
+                const text = el.getAttribute('data-tip');
+                if (!text) return;
+                box.textContent = text.replace(/\\n/g, '\n');
+                box.style.display = 'block';
+                const rect = el.getBoundingClientRect();
+                let top = rect.bottom + 6;
+                let left = rect.left + rect.width / 2 - 130;
+                if (left < 8) left = 8;
+                if (left + 260 > window.innerWidth - 8) left = window.innerWidth - 268;
+                if (top + 200 > window.innerHeight - 8) top = rect.top - 210;
+                if (top < 8) top = rect.bottom + 6;
+                box.style.top = top + 'px';
+                box.style.left = left + 'px';
+                box.style.opacity = '1';
+            }
+
+            function hideTip() {
+                box.style.opacity = '0';
+                setTimeout(() => { if (box.style.opacity === '0') box.style.display = 'none'; }, 160);
+            }
+
+            function bindTips() {
+                document.querySelectorAll('.dp-tip[data-tip]').forEach(el => {
+                    if (el._tipBound) return;
+                    el._tipBound = true;
+                    el.addEventListener('mouseenter', () => showTip(el));
+                    el.addEventListener('mouseleave', hideTip);
+                    el.addEventListener('touchstart', (e) => { e.preventDefault(); showTip(el); }, { passive: false });
+                    el.addEventListener('touchend', () => setTimeout(hideTip, 2000));
+                });
+            }
+
+            bindTips();
+            // Re-bind after dynamic content renders (SI analysis, recomm)
+            const obs = new MutationObserver(bindTips);
+            obs.observe(document.body, { childList: true, subtree: true });
+        })();
 
     </script>
     <script src="cfd-engine.js"></script>
