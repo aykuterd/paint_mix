@@ -331,9 +331,7 @@
             <!-- Versiyon Etiketi -->
             <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg mono" style="background:rgba(34,211,238,0.08);border:1px solid rgba(34,211,238,0.2)">
                 <i class="fas fa-code-branch text-xs" style="color:#22d3ee"></i>
-                <span class="text-xs font-black" style="color:#22d3ee">v1.4.1</span>
-                <span class="text-xs" style="color:#475569">+</span>
-                <span class="text-xs font-bold" style="color:#67e8f9">theoretical-baseline-warning</span>
+                <span class="text-xs font-black" style="color:#22d3ee">v1.4.6</span>
             </div>
             <button id="openHelp" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-700 text-slate-200 hover:bg-slate-600 transition flex items-center gap-2">
                 <i class="fas fa-book-open"></i>
@@ -2177,6 +2175,14 @@
 
             <div class="space-y-4">
               <div>
+                <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Tank Geometrisi</label>
+                <div class="flex gap-2">
+                  <button id="cfd_geoCyl" class="btn-toggle active flex-1 py-2 rounded-lg text-xs font-black">SİLİNDİRİK</button>
+                  <button id="cfd_geoSq"  class="btn-toggle flex-1 py-2 rounded-lg text-xs font-black">KARE/DİKDÖRTGEN</button>
+                </div>
+              </div>
+
+              <div>
                 <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Pervane Tipi</label>
                 <select id="cfd_impeller" class="input-dark">
                   <option value="propeller">Marine Propeller (Aksiyel ↓)</option>
@@ -2191,9 +2197,17 @@
               </div>
 
               <div class="grid grid-cols-2 gap-2">
-                <div>
+                <div id="cfd_T_row">
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Tank Çapı T (m)</label>
                   <input type="number" id="cfd_T" value="1.3" step="0.1" min="0.3" class="input-dark">
+                </div>
+                <div id="cfd_W_row" class="hidden">
+                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Genişlik W (m)</label>
+                  <input type="number" id="cfd_W" value="1.2" step="0.1" min="0.3" class="input-dark">
+                </div>
+                <div id="cfd_L_row" class="hidden">
+                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Uzunluk L (m)</label>
+                  <input type="number" id="cfd_L" value="1.5" step="0.1" min="0.3" class="input-dark">
                 </div>
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Tank Yüksekliği H (m)</label>
@@ -2217,6 +2231,9 @@
                 <div id="cfd_liqInfo" class="col-span-2 p-2 rounded-lg text-[9px] mono space-y-0.5" style="background:rgba(34,211,238,0.05);border:1px solid rgba(34,211,238,0.15)">
                   <div class="flex justify-between"><span class="text-slate-500">Sıvı hacmi:</span><span id="cfd_liqVol" class="text-cyan-300">--</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Sıvı yüksekliği H_l:</span><span id="cfd_liqH" class="text-cyan-300">--</span></div>
+                  <div id="cfd_bombe_row1" class="flex justify-between"><span class="text-slate-500">Bombe (DIN 28011):</span><span id="cfd_bombeVol" class="text-violet-400">--</span></div>
+                  <div id="cfd_bombe_row2" class="flex justify-between"><span class="text-slate-500">Bombe derinliği:</span><span id="cfd_bombeH" class="text-violet-400">--</span></div>
+                  <div id="cfd_Teq_row" style="display:none" class="flex justify-between"><span class="text-slate-500">T_eq (hidrolik çap):</span><span id="cfd_Teq" class="text-amber-400">--</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Üstten boşluk:</span><span id="cfd_liqGap" class="text-cyan-300">--</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Doluluk:</span><span id="cfd_liqFill" class="text-cyan-300">--</span></div>
                 </div>

@@ -53,7 +53,7 @@ function cfdDrawSideView(canvas, p) {
   // Sol yarı: r=T/2 (duvar) → r=0 (eksen), Sağ yarı: r=0 → r=T/2
   // Böylece pervane (eksen üzerinde) tam ortada görünür
 
-  const pad = { top: 25, bottom: 35, left: 30, right: 30 };
+  const pad = { top: 25, bottom: 50, left: 30, right: 30 };
   const dW = W - pad.left - pad.right; // toplam genişlik (iki yarı)
   const dH = H - pad.top - pad.bottom; // tankın toplam yüksekliği (Htank)
   const halfW = dW / 2;               // her yarının genişliği
@@ -68,6 +68,20 @@ function cfdDrawSideView(canvas, p) {
 
   const cx = pad.left + halfW;         // merkez x (eksen)
 
+  // Bombe geometrisi — erken hesaplanır, fill hücrelerden ÖNCE çizilir
+  const botY    = pad.top + dH;
+  const bombePx = Math.min(Math.round(dH * (p.h_bombe || 0) / (p.Htank || 1)), pad.bottom - 6);
+  if (bombePx > 0 && p.Vliq > 0) {
+    const bombeAlpha = Math.min(0.15, 0.06 + (p.Vliq / (p.V_bombe || 0.001)) * 0.08);
+    ctx.fillStyle = `rgba(56,189,248,${bombeAlpha})`;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, botY);
+    ctx.bezierCurveTo(pad.left, botY+bombePx*0.55, cx-dW*0.08, botY+bombePx, cx, botY+bombePx);
+    ctx.bezierCurveTo(cx+dW*0.08, botY+bombePx, pad.left+dW, botY+bombePx*0.55, pad.left+dW, botY);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   let vmax = 0, cmax = 0;
   for (let i = 0; i < CFD.NR * CFD.NZ; i++) {
     if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
@@ -76,7 +90,12 @@ function cfdDrawSideView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
-  // ── Hücreleri çiz: sol yarı (ayna) + sağ yarı (normal) ──────
+  // ── Hücreleri çiz: silindirik bölgeye kırp ──────────────────
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(pad.left, pad.top, dW, dH);
+  ctx.clip();
+
   for (let iz = 0; iz < CFD.NZ; iz++) {
     for (let ir = 0; ir < CFD.NR; ir++) {
       const idx = cfdIdx(ir, iz);
@@ -187,28 +206,61 @@ function cfdDrawSideView(canvas, p) {
     }
   }
 
+  // Hücre clip bölgesini kapat
+  ctx.restore();
+
   // ── Streamlines ──────────────────────────────────────────────
   if (CFD.showStreamlines && CFD.viewMode !== 'deadzone') {
     _drawStreamlinesMirror(ctx, pad, dW, dH, cellW, cellH, cx, liqTopY);
   }
 
-  // ── Tank sınırı ──────────────────────────────────────────────
+  // ── Tank sınırı — hücrelerden sonra çizilir (üstte görünür) ──
   ctx.strokeStyle = 'rgba(100,116,139,0.8)'; ctx.lineWidth = 2;
-  // Sol duvar, sağ duvar, taban, üst
-  ctx.strokeRect(pad.left, pad.top, dW, dH);
-  // Merkez eksen (kesik çizgi)
-  ctx.strokeStyle = 'rgba(100,116,139,0.35)'; ctx.lineWidth = 1;
-  ctx.setLineDash([4, 4]);
-  ctx.beginPath(); ctx.moveTo(cx, pad.top); ctx.lineTo(cx, pad.top+dH); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Yuvarlatılmış taban
+  // Üst kenar
   ctx.beginPath();
-  ctx.strokeStyle = 'rgba(100,116,139,0.4)'; ctx.lineWidth = 1.5;
-  ctx.setLineDash([4,4]);
-  ctx.moveTo(pad.left, pad.top+dH);
-  ctx.quadraticCurveTo(pad.left+dW/2, pad.top+dH+15, pad.left+dW, pad.top+dH);
-  ctx.stroke(); ctx.setLineDash([]);
+  ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left + dW, pad.top);
+  ctx.stroke();
+  // Sol duvar
+  ctx.beginPath();
+  ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, botY);
+  ctx.stroke();
+  // Sağ duvar
+  ctx.beginPath();
+  ctx.moveTo(pad.left + dW, pad.top); ctx.lineTo(pad.left + dW, botY);
+  ctx.stroke();
+
+  if (p.geometry === 'square') {
+    // Kare: düz alt çizgi
+    ctx.beginPath();
+    ctx.moveTo(pad.left, botY); ctx.lineTo(pad.left + dW, botY);
+    ctx.stroke();
+    // Merkez eksen (düz alt kadar)
+    ctx.strokeStyle = 'rgba(100,116,139,0.35)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cx, pad.top); ctx.lineTo(cx, botY); ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    // Silindirik: torispherical bombe eğrisi (mavi kontur)
+    ctx.strokeStyle = 'rgba(100,200,255,0.85)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, botY);
+    ctx.bezierCurveTo(
+      pad.left,       botY + bombePx * 0.55,
+      cx - dW * 0.08, botY + bombePx,
+      cx,             botY + bombePx
+    );
+    ctx.bezierCurveTo(
+      cx + dW * 0.08, botY + bombePx,
+      pad.left + dW,  botY + bombePx * 0.55,
+      pad.left + dW,  botY
+    );
+    ctx.stroke();
+    // Merkez eksen (bombe altına kadar uzar)
+    ctx.strokeStyle = 'rgba(100,116,139,0.35)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cx, pad.top); ctx.lineTo(cx, botY + bombePx); ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   // ── Pervane + Şaft (ortada) ───────────────────────────────────
   // Pervane fiziksel olarak tabandan impH yüksekliğinde — çizimde Htank'a göre konumlanır
@@ -288,6 +340,13 @@ function cfdDrawSideView(canvas, p) {
   ctx.fillText('▼ Sıvı Seviyesi (H_l=' + p.H.toFixed(2) + 'm)', pad.left + 4, liqTopY - 3);
   ctx.fillStyle = '#64748b'; ctx.textAlign = 'right';
   ctx.fillText('Tank H=' + Htank.toFixed(2) + 'm', pad.left + dW - 4, pad.top + 10);
+  if (p.geometry === 'square') {
+    ctx.fillStyle = '#f59e0b'; ctx.textAlign = 'left';
+    ctx.fillText(
+      'W\xD7L=' + (p.W||0).toFixed(1) + '\xD7' + (p.L||0).toFixed(1) + 'm  T_eq=' + p.T.toFixed(2) + 'm',
+      pad.left + 4, pad.top + dH + 12
+    );
+  }
 }
 
 function _drawArrow(ctx, x1, y1, x2, y2, alpha) {
