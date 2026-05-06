@@ -461,9 +461,7 @@ function cfdDrawTopView(canvas, p) {
   ctx.clearRect(0, 0, W, H);
 
   const cx = W / 2, cy = H / 2;
-  const maxR = Math.min(W, H) / 2 - 20;
 
-  // Draw polar projection at z = impeller height
   const iz_imp = Math.min(CFD.NZ - 1, Math.max(0, Math.round((p.impH / p.H) * (CFD.NZ - 1))));
   let vmax = 0, cmax = 0;
   for (let i = 0; i < CFD.NR * CFD.NZ; i++) {
@@ -473,69 +471,121 @@ function cfdDrawTopView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
-  const nTheta = 72;
-  const dTheta = (2 * Math.PI) / nTheta;
-
-  for (let ir = 0; ir < CFD.NR; ir++) {
-    const r1 = (ir / CFD.NR) * maxR;
-    const r2 = ((ir + 1) / CFD.NR) * maxR;
-    const idx = cfdIdx(ir, iz_imp);
-
-    let val;
-    if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-    else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
-    else val = CFD.vmag[idx] / vmax;
-
-    ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
-
-    for (let it = 0; it < nTheta; it++) {
-      const a1 = it * dTheta;
-      const a2 = (it + 1) * dTheta;
-      ctx.beginPath();
-      ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
-      ctx.arc(cx, cy, r2, a1, a2);
-      ctx.arc(cx, cy, r1, a2, a1, true);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
-
-  // Tank wall
-  ctx.strokeStyle = 'rgba(100,116,139,0.7)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
-
-  // Impeller blades
-  const impR = (p.D / 2 / (p.T / 2)) * maxR;
-  ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3;
   const nBlades = p.impeller === 'rushton' ? 6 : p.impeller === 'anchor' ? 2 : 4;
   const rot = (CFD.time * p.rpm / 60 * 2 * Math.PI) % (2 * Math.PI);
-  for (let b = 0; b < nBlades; b++) {
-    const angle = rot + (b * 2 * Math.PI) / nBlades;
-    ctx.beginPath();
-    ctx.moveTo(cx + 5 * Math.cos(angle), cy + 5 * Math.sin(angle));
-    ctx.lineTo(cx + impR * Math.cos(angle), cy + impR * Math.sin(angle));
-    ctx.stroke();
-  }
 
-  // Shaft center
-  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#f97316'; ctx.fill();
+  if (p.geometry === 'square') {
+    const wVal = p.W || 1, lVal = p.L || p.W || 1;
+    const aspect = lVal / wVal;
+    const maxHalfW = Math.min((W - 40) / 2, (H - 40) / (2 * aspect));
+    const maxHalfH = maxHalfW * aspect;
 
-  // Baffle positions
-  if (p.baffle) {
-    ctx.strokeStyle = 'rgba(100,200,255,0.4)'; ctx.lineWidth = 3;
-    for (let b = 0; b < 4; b++) {
-      const angle = (b * Math.PI) / 2;
+    // Concentric rectangles outside-in (outer fill, inner overwrites → ring effect)
+    for (let ir = CFD.NR - 1; ir >= 0; ir--) {
+      const idx = cfdIdx(ir, iz_imp);
+      let val;
+      if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
+      else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
+      else val = CFD.vmag[idx] / vmax;
+      ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
+      const f = (ir + 1) / CFD.NR;
+      ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
+    }
+
+    // Tank wall
+    ctx.strokeStyle = 'rgba(100,116,139,0.7)'; ctx.lineWidth = 2;
+    ctx.strokeRect(cx - maxHalfW, cy - maxHalfH, maxHalfW * 2, maxHalfH * 2);
+
+    // Impeller blades
+    const impR = (p.D / 2 / (p.T / 2)) * maxHalfW;
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3;
+    for (let b = 0; b < nBlades; b++) {
+      const angle = rot + (b * 2 * Math.PI) / nBlades;
       ctx.beginPath();
-      ctx.moveTo(cx + (maxR - 8) * Math.cos(angle), cy + (maxR - 8) * Math.sin(angle));
-      ctx.lineTo(cx + maxR * Math.cos(angle), cy + maxR * Math.sin(angle));
+      ctx.moveTo(cx + 5 * Math.cos(angle), cy + 5 * Math.sin(angle));
+      ctx.lineTo(cx + impR * Math.cos(angle), cy + impR * Math.sin(angle));
       ctx.stroke();
     }
-  }
 
-  // Labels
-  ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
-  ctx.fillText('ÜSTTEN BAKIŞ (z = pervane)', cx, H - 4);
+    // Shaft center
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#f97316'; ctx.fill();
+
+    // Baffles: marks at midpoints of each wall side
+    if (p.baffle) {
+      ctx.strokeStyle = 'rgba(100,200,255,0.4)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy - maxHalfH + 8); ctx.lineTo(cx, cy - maxHalfH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy + maxHalfH - 8); ctx.lineTo(cx, cy + maxHalfH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - maxHalfW + 8, cy); ctx.lineTo(cx - maxHalfW, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + maxHalfW - 8, cy); ctx.lineTo(cx + maxHalfW, cy); ctx.stroke();
+    }
+
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
+    ctx.fillText('ÜSTTEN BAKIŞ (z=pervane)  W\xD7L=' + wVal.toFixed(1) + '\xD7' + lVal.toFixed(1) + 'm', cx, H - 4);
+
+  } else {
+    const maxR = Math.min(W, H) / 2 - 20;
+    const nTheta = 72;
+    const dTheta = (2 * Math.PI) / nTheta;
+
+    for (let ir = 0; ir < CFD.NR; ir++) {
+      const r1 = (ir / CFD.NR) * maxR;
+      const r2 = ((ir + 1) / CFD.NR) * maxR;
+      const idx = cfdIdx(ir, iz_imp);
+
+      let val;
+      if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
+      else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
+      else val = CFD.vmag[idx] / vmax;
+
+      ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
+
+      for (let it = 0; it < nTheta; it++) {
+        const a1 = it * dTheta;
+        const a2 = (it + 1) * dTheta;
+        ctx.beginPath();
+        ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
+        ctx.arc(cx, cy, r2, a1, a2);
+        ctx.arc(cx, cy, r1, a2, a1, true);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Tank wall
+    ctx.strokeStyle = 'rgba(100,116,139,0.7)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
+
+    // Impeller blades
+    const impR = (p.D / 2 / (p.T / 2)) * maxR;
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3;
+    for (let b = 0; b < nBlades; b++) {
+      const angle = rot + (b * 2 * Math.PI) / nBlades;
+      ctx.beginPath();
+      ctx.moveTo(cx + 5 * Math.cos(angle), cy + 5 * Math.sin(angle));
+      ctx.lineTo(cx + impR * Math.cos(angle), cy + impR * Math.sin(angle));
+      ctx.stroke();
+    }
+
+    // Shaft center
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#f97316'; ctx.fill();
+
+    // Baffle positions
+    if (p.baffle) {
+      ctx.strokeStyle = 'rgba(100,200,255,0.4)'; ctx.lineWidth = 3;
+      for (let b = 0; b < 4; b++) {
+        const angle = (b * Math.PI) / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + (maxR - 8) * Math.cos(angle), cy + (maxR - 8) * Math.sin(angle));
+        ctx.lineTo(cx + maxR * Math.cos(angle), cy + maxR * Math.sin(angle));
+        ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
+    ctx.fillText('ÜSTTEN BAKIŞ (z = pervane)', cx, H - 4);
+  }
 }
 
 // ─── CoV-Time Graph ─────────────────────────────────────────
