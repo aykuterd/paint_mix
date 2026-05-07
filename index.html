@@ -4325,31 +4325,32 @@ function mixApplyTankSelection(kod) {
 }
 
 // Tab switching için ekleme
-document.getElementById('tabUygunluk').onclick = () => {
-    window._activePageTab = 'uygunluk';
-    document.getElementById('pageMixing').style.display = 'none';
-    document.getElementById('pageDispersion').style.display = 'none';
-    document.getElementById('pageUygunluk').style.display = '';
-    document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active-page-tab'));
-    document.getElementById('tabUygunluk').classList.add('active-page-tab');
-};
+// ============ PAGE TAB SWITCHING ============
+        const _pages = ['pageMixing','pageDispersion','pageUygunluk','pageCFD'];
+        const _tabs  = ['tabMixing','tabDispersion','tabUygunluk','tabCFD'];
 
+        function showPage(pageId, tabId) {
+            _pages.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = (id === pageId) ? '' : 'none';
+            });
+            document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active-page-tab'));
+            const tab = document.getElementById(tabId);
+            if (tab) tab.classList.add('active-page-tab');
+        }
 
-                // ============ PAGE TAB SWITCHING ============
         document.getElementById('tabMixing').onclick = () => {
             window._activePageTab = 'mixing';
-            document.getElementById('pageMixing').style.display = '';
-            document.getElementById('pageDispersion').style.display = 'none';
-            document.getElementById('tabMixing').classList.add('active-page-tab');
-            document.getElementById('tabDispersion').classList.remove('active-page-tab');
+            showPage('pageMixing', 'tabMixing');
         };
         document.getElementById('tabDispersion').onclick = () => {
             window._activePageTab = 'dispersion';
-            document.getElementById('pageMixing').style.display = 'none';
-            document.getElementById('pageDispersion').style.display = '';
-            document.getElementById('tabMixing').classList.remove('active-page-tab');
-            document.getElementById('tabDispersion').classList.add('active-page-tab');
+            showPage('pageDispersion', 'tabDispersion');
             updateBeadInfo();
+        };
+        document.getElementById('tabUygunluk').onclick = () => {
+            window._activePageTab = 'uygunluk';
+            showPage('pageUygunluk', 'tabUygunluk');
         };
 
         // ============ DISPERSIYON ENGINE (Kwade 1999 / Bond 1952) ============
