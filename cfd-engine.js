@@ -45,12 +45,33 @@ function cfdBuildStreamFunction(p) {
   const vtip = Math.PI * p.D * N;
   const Nq = _getNq(p.impeller);
   const Q = Nq * N * Math.pow(p.D, 3); // m³/s gerçek pompalama debisi
-  // Amplitüd: A = Q — stream function boyutu m³/s, vmag makul m/s değerlerinde
-  const A = Q;
+
+  // Non-Newtonian kavern yaklaşımı: Re_eff << Re_Newt → akış daha lokalize
+  // Stream function hâlâ aksisimetrik/Newtonian formu koruyor (kavern geometrisi
+  // tam 3D gerektirir), ancak amplitüdü Re_eff/Re oranıyla scale ederek
+  // zayıflamış dolaşımı yaklaşık yansıtıyoruz. Forschner et al. (1996).
+  let A_scale = 1.0;
+  if (p.nonNewt && p.nn_n < 1.0 && p.nn_K > 0) {
+    const gamma_av = 10.5 * N; // Metzner-Otto ortalama kesme hızı
+    const mu_eff_loc = p.nn_K * Math.pow(Math.max(gamma_av, 0.01), p.nn_n - 1);
+    const Re_eff_loc = p.rho * N * p.D * p.D / Math.max(mu_eff_loc, 1e-6);
+    const Re_newt   = p.rho * N * p.D * p.D / Math.max(p.visc, 1e-6);
+    A_scale = Math.min(1.0, Math.max(0.15, Re_eff_loc / Math.max(Re_newt, 1)));
+  }
+  const A = Q * A_scale;
 
   const dr = R / NR;
   const dz = H / NZ;
   const z_imp = p.impH;
+
+  // Hayward Gordon (2019): tek pervane için maksimum Z/T erişim sınırı
+  const _maxZT = { rushton: 1.0, cowles: 1.0, paddle: 1.0,
+                   pbtd: 1.2, pbtu: 1.2,
+                   propeller: 1.25, hydrofoil: 1.3,
+                   anchor: 1.5 };
+  const maxZT  = _maxZT[p.impeller] ?? 1.2;
+  const T_ref  = p.geometry === 'square' ? Math.sqrt(p.W * p.L) : p.T;
+  const H_reach = Math.min(H, maxZT * T_ref); // pervane akışının ulaşabildiği maks yükseklik
 
   for (let iz = 0; iz < NZ; iz++) {
     for (let ir = 0; ir < NR; ir++) {
@@ -58,6 +79,11 @@ function cfdBuildStreamFunction(p) {
       const z = (iz + 0.5) * dz;
       const rn = r / R;
       const idx = cfdIdx(ir, iz);
+
+      // Erişim zayıflaması: H_reach üzerinde psi üstel olarak söner → ölü bölge
+      const reach_att = z <= H_reach
+        ? 1.0
+        : Math.exp(-Math.pow((z - H_reach) / (H * 0.12), 2));
 
       // Radial shape: zero at axis and wall
       const fr = rn * (1 - rn * rn);
@@ -95,10 +121,13 @@ function cfdBuildStreamFunction(p) {
         psi = -A * fr * Math.sin(Math.PI * zn);
 
       } else if (p.impeller === 'anchor') {
-        // Wall-dominated flow
-        const wall_fr = Math.pow(rn, 3) * Math.pow(1 - rn, 0.3);
+        // Anchor: duvar boyunca sürükleme akışı, zayıf aksiyel pompalama.
+        // Teğetsel bileşen aksisimetrik psi'de temsil edilemez; aksiyel döngü
+        // için wall_fr profili r²·(1-r)^0.5 — daha dar duvar piki, merkez sıfır.
+        // Nq = 0.05 zaten çok düşük aksiyel pompayı yansıtıyor.
+        const wall_fr = Math.pow(rn, 2.5) * Math.pow(1 - rn, 0.5);
         const zn = z / H;
-        psi = A * 0.4 * wall_fr * Math.sin(Math.PI * zn);
+        psi = A * 0.35 * wall_fr * Math.sin(Math.PI * zn);
 
       } else if (p.impeller === 'cowles') {
         // High-shear disk: strong radial + dual vortex, narrow
@@ -119,6 +148,9 @@ function cfdBuildStreamFunction(p) {
       if (p.baffle && p.impeller !== 'anchor') {
         psi *= 1.15;
       }
+
+      // Yüksek H/T'de üst ölü bölge: pervane erişimi dışındaki alanlarda psi söner
+      psi *= reach_att;
 
       CFD.psi[idx] = psi;
     }
@@ -190,9 +222,13 @@ function _cfdComputeShearRate(p) {
 
 function _getNq(imp) {
   const map = {
-    propeller: 0.50, hydrofoil: 0.55, paddle: 0.35,
-    rushton: 0.72, anchor: 0.05, pbtu: 0.45,
-    pbtd: 0.50, cowles: 0.30,
+    // Kaynak: Hayward Gordon Mastering Mixing Fundamentals (2019)
+    // Radial Flow (Rushton): Nq=0.95–1.23 → orta 1.09
+    // Pitched Blade: Nq=0.68–0.86 → orta 0.77
+    // Hydrofoil: Nq=0.60–0.70 → orta 0.65
+    propeller: 0.55, hydrofoil: 0.65, paddle: 0.77,
+    rushton: 1.09, anchor: 0.05, pbtu: 0.77,
+    pbtd: 0.77, cowles: 0.35,
   };
   return map[imp] || 0.40;
 }
@@ -308,12 +344,21 @@ function cfdInjectTracer(mode) {
 // ─── Metrics ─────────────────────────────────────────────────
 function cfdComputeMetrics(p) {
   const { NR, NZ, C } = CFD;
-  const n = NR * NZ;
-  let sum = 0, sum2 = 0;
-  for (let i = 0; i < n; i++) { sum += C[i]; sum2 += C[i] * C[i]; }
-  const mean = sum / n;
-  const variance = sum2 / n - mean * mean;
-  const cov = mean > 0.001 ? Math.sqrt(Math.max(0, variance)) / mean : (sum > 0.001 ? 1.0 : 0);
+  // Silindirik koordinat: her hücrenin hacmi r ile orantılı (A_cell ∝ r·dr·dz)
+  // Merkez hücreleri (küçük r) daha az hacme sahip — r-ağırlıklı istatistik
+  let sumW = 0, sumCW = 0, sumC2W = 0;
+  for (let iz = 0; iz < NZ; iz++) {
+    for (let ir = 0; ir < NR; ir++) {
+      const r_weight = ir + 0.5; // r/dr → boyutsuz, ağırlık olarak yeterli
+      const val = C[iz * NR + ir];
+      sumW   += r_weight;
+      sumCW  += r_weight * val;
+      sumC2W += r_weight * val * val;
+    }
+  }
+  const mean = sumW > 0 ? sumCW / sumW : 0;
+  const variance = sumW > 0 ? sumC2W / sumW - mean * mean : 0;
+  const cov = mean > 0.001 ? Math.sqrt(Math.max(0, variance)) / mean : (sumCW > 0.001 ? 1.0 : 0);
   const homo = mean > 0.001 ? Math.max(0, Math.min(100, (1 - Math.min(cov, 1)) * 100)) : 0;
   const deadPct = p ? cfdDeadZoneModel(p) : 50;
 
@@ -327,7 +372,7 @@ function cfdComputeMetrics(p) {
   // N_tur: Metzner-Otto Re_eff bazlı (Nienow 1997 Tablo 2)
   //
   // Kalibrasyon: T=1.3, H=2.27, D=0.3, 725RPM, visc=0.5 Pa·s → ~45 dk ✓
-  let t95_model = null;
+  let t99_model = null;
   if (p) {
     const N = p.rpm / 60;
     const Nq = _getNq(p.impeller);
@@ -362,15 +407,15 @@ function cfdComputeMetrics(p) {
     else if (Re_eff < 10000) N_tur = 6;
     else                     N_tur = 4;
 
-    // H/T > 1.2 düzeltmesi (Rodgers et al. 2011)
+    // H/T > 1.2 düzeltmesi (Rodgers et al. 2011) — üstel 0.67 (aralık 0.5–0.8)
     const HT = p.H / p.T;
-    const HT_factor = HT > 1.2 ? Math.pow(HT, 1.0) : 1.0;
+    const HT_factor = HT > 1.2 ? Math.pow(HT / 1.2, 0.67) : 1.0;
 
     const t95_base = N_tur * t_devridaim * HT_factor; // saniye (t95 tabanı)
     // t99 dönüşümü: t99 = ln(100)/ln(20) × t95 = 1.54 × t95
     // Renk kontrolü için t99 standardı — Grenville & Nienow (2004)
     const T99_MULT = Math.log(100) / Math.log(20); // = 1.537
-    t95_model = t95_base * T99_MULT;
+    t99_model = t95_base * T99_MULT;
 
     // Corrections objesi — UI açıklama kartı için
     CFD._lastCorrections = {
@@ -384,7 +429,7 @@ function cfdComputeMetrics(p) {
       Re_bulk: Math.round(p.rho * (p.rpm/60) * p.D * p.D / p.visc),
     };
   }
-  return { mean, cov, homo, deadPct, t95_grenville: t95_model };
+  return { mean, cov, homo, deadPct, t99_model };
 }
 
 // ─── Yüzey Vorteksi (girdab) Derinliği ────────────────────────
@@ -491,4 +536,66 @@ function cfdDeadZoneMask(p) {
     }
   }
   return mask;
+}
+
+// ─── Web Worker Handler ────────────────────────────────────────
+// Bu dosya hem ana thread'de hem Worker olarak yüklenebilir.
+if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope) {
+  cfdInit();
+  let _lastStepInfo = {};
+
+  self.onmessage = function (e) {
+    const { type, p, substeps, mode } = e.data;
+    switch (type) {
+      case 'build': {
+        cfdBuildStreamFunction(p);
+        self.postMessage({
+          type: 'built',
+          psi:       new Float64Array(CFD.psi),
+          ur:        new Float64Array(CFD.ur),
+          uz:        new Float64Array(CFD.uz),
+          vmag:      new Float64Array(CFD.vmag),
+          shearRate: new Float64Array(CFD.shearRate),
+        });
+        break;
+      }
+      case 'step': {
+        for (let s = 0; s < substeps; s++) {
+          _lastStepInfo = cfdSolveStep(p);
+          CFD.time += _lastStepInfo.dt;
+          CFD.step++;
+        }
+        const metrics = cfdComputeMetrics(p);
+        let covEntry = null;
+        if (metrics.mean > 0.001) {
+          covEntry = { t: CFD.time, cov: metrics.cov };
+          if (CFD.t95 === null && metrics.cov < 0.01) CFD.t95 = CFD.time;
+        }
+        const probeVals = cfdSampleProbes(p);
+        self.postMessage({
+          type:        'result',
+          C:           new Float64Array(CFD.C),
+          step:        CFD.step,
+          time:        CFD.time,
+          t95:         CFD.t95,
+          stepInfo:    _lastStepInfo,
+          metrics,
+          probeVals,
+          covEntry,
+          corrections: CFD._lastCorrections || null,
+        });
+        break;
+      }
+      case 'inject': {
+        cfdInjectTracer(mode);
+        self.postMessage({ type: 'injected', C: new Float64Array(CFD.C) });
+        break;
+      }
+      case 'reset': {
+        cfdReset();
+        self.postMessage({ type: 'reset_done' });
+        break;
+      }
+    }
+  };
 }

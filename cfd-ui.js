@@ -3,6 +3,9 @@
 // ============================================================
 
 let cfdGeometry = 'cylindrical'; // 'cylindrical' | 'square'
+let cfdWorker   = null;          // Web Worker instance (null = sync fallback)
+let cfdLastP    = null;          // Son kullanılan params (worker result handler'da render için)
+let cfdLastStepInfo = { Re: 0, D_eff: 0, vtip: 0 };
 
 function cfdGetParams() {
   const geometry = cfdGeometry;
@@ -71,6 +74,7 @@ function cfdUpdateLiqInfo(p) {
   const bombeVolEl = document.getElementById('cfd_bombeVol');
   const bombeHEl   = document.getElementById('cfd_bombeH');
   const teqEl      = document.getElementById('cfd_Teq');
+  const liqInfoEl  = document.getElementById('cfd_liqInfo');
   if (!volEl) return;
 
   const gap     = Math.max(0, p.Htank - p.H);
@@ -94,11 +98,90 @@ function cfdUpdateLiqInfo(p) {
   } else {
     hEl.style.color = '#67e8f9';
   }
+
+  // D/T geçerlilik sınırı — Hayward Gordon "Optimum D/T vs. Viscosity" grafiği
+  // Düşük viskozite (<100 cP): alt sınır ~0.20, üst sınır ~0.40
+  // Yüksek viskozite (>1000 cP): D/T 0.40–0.70 kabul edilebilir
+  const DT = p.T > 0 ? p.D / p.T : 0;
+  const viscCp = (p.visc || 0.001) * 1000;
+  const dtLow  = viscCp > 1000 ? 0.20 : 0.25;
+  const dtHigh = viscCp > 1000 ? 0.60 : 0.40;
+  let dtWarnEl = document.getElementById('cfd_dtWarn');
+  if (!dtWarnEl) {
+    dtWarnEl = document.createElement('p');
+    dtWarnEl.id = 'cfd_dtWarn';
+    dtWarnEl.className = 'text-[9px] mt-1';
+    liqInfoEl && liqInfoEl.appendChild(dtWarnEl);
+  }
+  if (DT < dtLow) {
+    dtWarnEl.style.color = '#fca5a5';
+    dtWarnEl.innerText = `⚠ D/T = ${DT.toFixed(2)} — geçerli aralık altında (min ${dtLow.toFixed(2)}). t99 tahmini güvenilir değil. [Kaynak: Hayward Gordon]`;
+  } else if (DT > dtHigh) {
+    dtWarnEl.style.color = '#fcd34d';
+    dtWarnEl.innerText = `⚠ D/T = ${DT.toFixed(2)} — tipik aralık üstünde (max ${dtHigh.toFixed(2)}). Güç tüketimi artar. [Kaynak: Hayward Gordon]`;
+  } else {
+    dtWarnEl.innerText = '';
+  }
+
+  // C/D pervane alt boşluk kontrolü — Hayward Gordon Impeller Positioning tablosu
+  const CD = p.D > 0 ? p.impH / p.D : 0;
+  // Hayward Gordon (2019) minimum C1/D aralığı: Radial 0.16, PBT 0.30, HP 0.50, Hydrofoil 0.70
+  const _cdMin = { rushton: 0.16, cowles: 0.16, paddle: 0.16,
+                   pbtd: 0.30, pbtu: 0.30,
+                   propeller: 0.50, hydrofoil: 0.70,
+                   anchor: 0.10 };
+  const _cdOpt = { rushton: 0.30, cowles: 0.30, paddle: 0.30,
+                   pbtd: 0.67, pbtu: 0.67,
+                   propeller: 0.90, hydrofoil: 1.00,
+                   anchor: 0.20 };
+  const cdMin = _cdMin[p.impeller] ?? 0.25;
+  const cdOpt = _cdOpt[p.impeller] ?? 0.50;
+  let cdWarnEl = document.getElementById('cfd_cdWarn');
+  if (!cdWarnEl) {
+    cdWarnEl = document.createElement('p');
+    cdWarnEl.id = 'cfd_cdWarn';
+    cdWarnEl.className = 'text-[9px] mt-1';
+    liqInfoEl && liqInfoEl.appendChild(cdWarnEl);
+  }
+  if (p.impH > 0 && CD < cdMin) {
+    cdWarnEl.style.color = '#fca5a5';
+    cdWarnEl.innerText = `⚠ C/D = ${CD.toFixed(2)} — geçerli aralık altında (min ${cdMin.toFixed(2)}). Ciddi alt ölü bölge. [Kaynak: Hayward Gordon]`;
+  } else if (p.impH > 0 && CD < cdOpt * 0.7) {
+    cdWarnEl.style.color = '#fcd34d';
+    cdWarnEl.innerText = `⚠ C/D = ${CD.toFixed(2)} — optimumun altında (önerilen ~${cdOpt.toFixed(2)}). Alt karışım zayıf olabilir. [Kaynak: Hayward Gordon]`;
+  } else {
+    cdWarnEl.innerText = '';
+  }
+
+  // H/T (Z/T) — tek pervane maksimum yükseklik kontrolü — Hayward Gordon Impeller Positioning
+  const HT = p.T > 0 ? p.H / p.T : 0;
+  // Kaynak: Hayward Gordon (2019) — Maximum Z/T for single impeller
+  const _maxZT = { rushton: 1.0, cowles: 1.0, paddle: 1.0,
+                   pbtd: 1.2, pbtu: 1.2,
+                   propeller: 1.25, hydrofoil: 1.3,
+                   anchor: 1.0 };
+  const maxZT = _maxZT[p.impeller] ?? 1.2;
+  let htWarnEl = document.getElementById('cfd_htWarn');
+  if (!htWarnEl) {
+    htWarnEl = document.createElement('p');
+    htWarnEl.id = 'cfd_htWarn';
+    htWarnEl.className = 'text-[9px] mt-1';
+    liqInfoEl && liqInfoEl.appendChild(htWarnEl);
+  }
+  if (HT > maxZT) {
+    htWarnEl.style.color = '#fca5a5';
+    htWarnEl.innerText = `⚠ H/T = ${HT.toFixed(2)} — tek pervane sınırı aşıldı (max ${maxZT.toFixed(2)}). Çift pervane gerekli! [Kaynak: Hayward Gordon]`;
+  } else if (HT > maxZT * 0.85) {
+    htWarnEl.style.color = '#fcd34d';
+    htWarnEl.innerText = `⚠ H/T = ${HT.toFixed(2)} — tek pervane limitine yakın (max ${maxZT.toFixed(2)}). Homojenite azalabilir.`;
+  } else {
+    htWarnEl.innerText = '';
+  }
 }
 
 function cfdUpdateMetricsUI(p, stepInfo, metrics) {
   const { Re, D_eff, vtip } = stepInfo;
-  const { cov, homo, deadPct, t95_grenville } = metrics;
+  const { cov, homo, deadPct, t99_model } = metrics;
 
   document.getElementById('cfd_re').innerText = Math.round(Re).toLocaleString('tr-TR');
   const reEl = document.getElementById('cfd_reStatus');
@@ -143,8 +226,8 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
   // ── 45 dk Kural Kontrolü ─────────────────────────────────────
   const KURAL_DK = 45;
   let yeterlilik_html = '';
-  if (t95_grenville !== null) {
-    const t99_dk = t95_grenville / 60; // artık t99 değeri
+  if (t99_model !== null) {
+    const t99_dk = t99_model / 60; // artık t99 değeri
     let renk, ikon, mesaj;
     if (t99_dk <= KURAL_DK * 0.60) {
       renk = '#22d3ee'; ikon = '⚡';
@@ -304,8 +387,86 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
     </p>`;
 }
 
-// ─── Main Loop ───────────────────────────────────────────────
-let cfdLastStepInfo = { Re: 0, D_eff: 0, vtip: 0 };
+// ─── Worker Setup ────────────────────────────────────────────
+let _cfdWorkerTested = false; // Worker init bir kez denendi mi
+
+function cfdEnsureWorker() {
+  if (_cfdWorkerTested) return;
+  _cfdWorkerTested = true;
+
+  // file:// protokolünde Worker CORS kısıtlaması nedeniyle çalışmaz — sync mod
+  if (location.protocol === 'file:') {
+    cfdWorker = null;
+    return;
+  }
+
+  try {
+    const w = new Worker('cfd-engine.js');
+    w.onmessage = _cfdOnWorkerMsg;
+    w.onerror = (err) => {
+      console.warn('CFD Worker hatası, senkron moda geçildi:', err.message || err);
+      cfdWorker = null;
+      if (CFD.running && cfdLastP) {
+        cfdBuildStreamFunction(cfdLastP);
+        cfdDrawSideView(document.getElementById('cfd_canvas'), cfdLastP);
+        cfdLoop();
+      }
+    };
+    cfdWorker = w;
+  } catch (e) {
+    console.warn('Web Worker başlatılamadı, senkron mod aktif:', e);
+    cfdWorker = null;
+  }
+}
+
+function _cfdDrawAll(p) {
+  if (!p) return;
+  cfdDrawSideView(document.getElementById('cfd_canvas'), p);
+  cfdDrawTopView(document.getElementById('cfd_topCanvas'), p);
+  cfdDrawCovGraph(document.getElementById('cfd_covGraph'));
+  cfdDrawVelProfile(document.getElementById('cfd_velProfile'), p);
+}
+
+function _cfdOnWorkerMsg(e) {
+  const d = e.data;
+
+  if (d.type === 'built') {
+    CFD.psi       = d.psi;
+    CFD.ur        = d.ur;
+    CFD.uz        = d.uz;
+    CFD.vmag      = d.vmag;
+    CFD.shearRate = d.shearRate;
+    _cfdDrawAll(cfdLastP);
+    if (CFD.running) cfdWorker.postMessage({ type: 'step', p: cfdLastP, substeps: CFD.substeps });
+
+  } else if (d.type === 'result') {
+    CFD.C    = d.C;
+    CFD.time = d.time;
+    CFD.step = d.step;
+    CFD.t95  = d.t95;
+    cfdLastStepInfo = d.stepInfo;
+    if (d.corrections) CFD._lastCorrections = d.corrections;
+
+    if (d.covEntry) {
+      CFD.covHistory.push(d.covEntry);
+      d.probeVals.forEach((v, i) => CFD.probeData[i].push({ t: d.time, v }));
+    }
+
+    _cfdDrawAll(cfdLastP);
+    cfdUpdateMetricsUI(cfdLastP, cfdLastStepInfo, d.metrics);
+
+    if (CFD.running) cfdWorker.postMessage({ type: 'step', p: cfdLastP, substeps: CFD.substeps });
+
+  } else if (d.type === 'injected') {
+    CFD.C = d.C;
+    if (!CFD.running && cfdLastP) cfdDrawSideView(document.getElementById('cfd_canvas'), cfdLastP);
+
+  } else if (d.type === 'reset_done') {
+    // State already reset in worker; local CFD arrays cleared separately
+  }
+}
+
+// ─── Main Loop (senkron fallback) ────────────────────────────
 
 function cfdLoop() {
   if (!CFD.running) return;
@@ -357,11 +518,13 @@ function cfdLoop() {
 
 function cfdStartSim() {
   const p = cfdGetParams();
-  cfdBuildStreamFunction(p);
+  cfdLastP = p;
 
   if (CFD.step === 0) {
     CFD.C.fill(0);
     CFD.C2.fill(0);
+    // Worker state'i de temizle (reset mesajı build'dan önce sıralı işlenir)
+    if (cfdWorker) cfdWorker.postMessage({ type: 'reset' });
   }
 
   CFD.running = true;
@@ -370,8 +533,16 @@ function cfdStartSim() {
   document.getElementById('cfd_startBtn').innerHTML = '<i class="fas fa-stop"></i> DURDUR';
   document.getElementById('cfd_startBtn').style.background = '#7f1d1d';
 
-  cfdDrawSideView(document.getElementById('cfd_canvas'), p);
-  cfdLoop();
+  cfdEnsureWorker();
+  if (cfdWorker) {
+    // Worker modu: build → built → step → result → step → ...
+    cfdWorker.postMessage({ type: 'build', p });
+  } else {
+    // Senkron fallback (file:// veya Worker desteği yoksa)
+    cfdBuildStreamFunction(p);
+    cfdDrawSideView(document.getElementById('cfd_canvas'), p);
+    cfdLoop();
+  }
 }
 
 function cfdStopSim() {
@@ -385,7 +556,10 @@ function cfdStopSim() {
 
 function cfdResetSim() {
   cfdStopSim();
+  // Worker state'i de sıfırla
+  if (cfdWorker) cfdWorker.postMessage({ type: 'reset' });
   cfdReset();
+  cfdLastP = null;
   // Tank seçiciyi ve bilgiyi temizle
   const secEl = document.getElementById('cfd_tankSec');
   if (secEl) secEl.value = '';
@@ -430,9 +604,13 @@ function cfdBindEvents() {
 
   document.getElementById('cfd_injectBtn').onclick = () => {
     const mode = document.getElementById('cfd_tracerPos').value;
-    cfdInjectTracer(mode);
-    const p = cfdGetParams();
-    if (!CFD.running) cfdDrawSideView(document.getElementById('cfd_canvas'), p);
+    if (cfdWorker) {
+      cfdWorker.postMessage({ type: 'inject', mode });
+    } else {
+      cfdInjectTracer(mode);
+      const p = cfdGetParams();
+      if (!CFD.running) cfdDrawSideView(document.getElementById('cfd_canvas'), p);
+    }
   };
 
   document.getElementById('cfd_rpm').oninput = function () {
@@ -453,6 +631,18 @@ function cfdBindEvents() {
   // Non-Newtonian toggle
   document.getElementById('cfd_nonNewt').addEventListener('change', function () {
     document.getElementById('cfd_nnParams').style.display = this.checked ? '' : 'none';
+    // Uyarı: hız alanı Newtonian yaklaşım, amplitüd scale edilir
+    let nnWarnEl = document.getElementById('cfd_nnWarn');
+    if (!nnWarnEl) {
+      nnWarnEl = document.createElement('p');
+      nnWarnEl.id = 'cfd_nnWarn';
+      nnWarnEl.className = 'text-[9px] mt-1 italic';
+      nnWarnEl.style.color = '#fcd34d';
+      document.getElementById('cfd_nnParams')?.parentElement?.appendChild(nnWarnEl);
+    }
+    nnWarnEl.innerText = this.checked
+      ? '⚠ Non-Newtonian mod: hız alanı Newtonian yaklaşımı, amplitüd Re_eff/Re ile ölçekleniyor. Kavern geometrisi ve yield stress tam modellenmemiştir.'
+      : '';
   });
 
   // View mode buttons
@@ -666,11 +856,17 @@ function cfdApplyTankSelection(kod) {
 
   // Bilgi kutusu
   bilgiEl.classList.remove('hidden');
-  const uyari = desteklenir ? '' : `
+  const uyariDesteksiz = desteklenir ? '' : `
     <div class="mt-2 p-2 rounded-lg" style="background:rgba(248,113,113,0.10);border:1px solid rgba(248,113,113,0.35)">
       <p class="text-[9px] font-black" style="color:#fca5a5">⚠ Tank kesit geometrisi: ${tank.tip}</p>
       <p class="text-[9px] mt-1" style="color:#fecaca">CFD motoru bu geometriyi desteklemiyor.</p>
     </div>`;
+  // Kare/dikdörtgen tank: aksisimetrik motor uyarısı — köşe ölü bölgeleri gösterilemez
+  const uyariKare = isKare ? `
+    <div class="mt-2 p-2 rounded-lg" style="background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.40)">
+      <p class="text-[9px] font-black" style="color:#fcd34d">⚠ Aksisimetrik Model Yaklaşımı</p>
+      <p class="text-[9px] mt-1" style="color:#fef3c7">CFD motoru aksisimetriktir. Kare tank için T<sub>eq</sub>=(2/√π)·√(W·L) eşdeğer çap kullanılmaktadır. Köşe ölü bölgeleri simüle edilememekte; t99 ve karışım homojenliği sonuçları gerçek değerden %15–30 iyimser olabilir.</p>
+    </div>` : '';
   bilgiEl.innerHTML = `
     <div class="grid grid-cols-2 gap-1">
       <span class="text-slate-500">Tesis:</span><span class="text-slate-200 font-bold">${tank.tesis || tank.yer || '-'}</span>
@@ -680,7 +876,7 @@ function cfdApplyTankSelection(kod) {
       <span class="text-slate-500">Pervane:</span><span class="text-cyan-400">${tank.imp_tip?.replace(/_/g,' ') || '-'}</span>
     </div>
     <p class="text-[8px] text-slate-500 mt-1 italic">Viskozite ve yoğunluğu üretilen boyaya göre girin.</p>
-    ${uyari}`;
+    ${uyariKare}${uyariDesteksiz}`;
 
   // Başlat butonunu desteklenmeyen geometride devre dışı bırak
   cfdSetStartEnabled(desteklenir, desteklenir ? '' : `Bu tank ${tank.tip} kesitli — CFD desteği yok`);
@@ -741,6 +937,7 @@ function cfdSetInputs(vals) {
 function cfdBootstrap() {
   cfdInit();
   cfdBindEvents();
+  cfdEnsureWorker(); // Worker'ı önceden test et; başarısız olursa sync fallback hazır
   const p = cfdGetParams();
   cfdBuildStreamFunction(p);
 }
