@@ -196,6 +196,12 @@ function _cfdDeriveVelocities(p) {
 
   // Compute shear rate field
   _cfdComputeShearRate(p);
+
+  // Hız alanı hazır — fizik tabanlı ölü bölge & Markov cache'i güncelle
+  CFD._deadZoneCache = {
+    deadPct: cfdDeadZoneFraction(p),
+    markov:  cfdMarkovAnalysis(p),
+  };
 }
 
 function _cfdComputeShearRate(p) {
@@ -360,7 +366,9 @@ function cfdComputeMetrics(p) {
   const variance = sumW > 0 ? sumC2W / sumW - mean * mean : 0;
   const cov = mean > 0.001 ? Math.sqrt(Math.max(0, variance)) / mean : (sumCW > 0.001 ? 1.0 : 0);
   const homo = mean > 0.001 ? Math.max(0, Math.min(100, (1 - Math.min(cov, 1)) * 100)) : 0;
-  const deadPct = p ? cfdDeadZoneModel(p) : 50;
+  const deadPct = p
+    ? (CFD._deadZoneCache ? CFD._deadZoneCache.deadPct : cfdDeadZoneFraction(p))
+    : 50;
 
   // ── Gerçekçi t95 — Turnover Modeli (Nienow 1997) ─────────────
   // Boya gibi viskoz sıvılar için. Grenville t95=5.2/ε^(1/3) sadece
@@ -522,9 +530,11 @@ function cfdDeadZoneMask(p) {
   const N = p.rpm / 60;
   const vtip = Math.PI * p.D * N;
 
-  // Mutlak eşik: vtip'in %5'i [m/s] — pervane tipine bağımsız, boyutsal
-  // Sınır hücreleri (no-slip duvar) hariç — bunlar her zaman sıfır, ölü bölge değil
-  const abs_threshold = 0.02 * vtip;
+  // Sabit eşik: 300 rpm referansındaki vtip'in %5'i — RPM'den bağımsız
+  // Böylece RPM artar → vmag artar → daha az hücre eşiğin altında → ölü bölge küçülür
+  // Nienow (1997): iyi karışım için bulk velocity ≥ ~5% vtip_design
+  const vtip_ref = Math.PI * p.D * 5; // 300 rpm referansı (sabit)
+  const abs_threshold = 0.05 * vtip_ref;
 
   const mask = new Uint8Array(NR * NZ);
   for (let iz = 0; iz < NZ; iz++) {
@@ -536,6 +546,124 @@ function cfdDeadZoneMask(p) {
     }
   }
   return mask;
+}
+
+// ─── Fizik Tabanlı Ölü Bölge Fraksiyonu ───────────────────────
+// vmag hız alanından r-ağırlıklı (silindirik hacim) ölü bölge %
+// cfdDeadZoneModel(Re-empirik) yerine kullanılır — geometri ve pervane
+// konumunu zaten içeren stream function'a dayanır.
+function cfdDeadZoneFraction(p) {
+  const { NR, NZ, vmag } = CFD;
+  if (!vmag || vmag.length === 0) return cfdDeadZoneModel(p);
+
+  const vtip_ref  = Math.PI * p.D * 5; // 300 rpm sabit referans (cfdDeadZoneMask ile aynı)
+  const threshold = 0.05 * vtip_ref;
+
+  let deadVol = 0, totalVol = 0;
+  for (let iz = 1; iz < NZ - 1; iz++) {
+    for (let ir = 1; ir < NR - 1; ir++) {
+      const r_w = ir + 0.5; // hacim ∝ r·dr·dz (silindirik)
+      totalVol += r_w;
+      if (vmag[iz * NR + ir] < threshold) deadVol += r_w;
+    }
+  }
+
+  if (totalVol === 0) return cfdDeadZoneModel(p);
+  return Math.min(95, Math.max(0.5, (deadVol / totalVol) * 100));
+}
+
+// ─── 3-Bölge Markov Karışım Analizi ──────────────────────────
+// Fakheri & Moghaddas (IJCHE 2012) kompartman modelinden türetilmiş.
+// Bölgeler: 0=Aktif (vmag>0.3·vtip), 1=Bulk, 2=Ölü (vmag<eşik)
+// Q_ij: hız alanından hesaplanan hacimsel akış hızları (m³/s birimi yok —
+//        boyutsuz r-ağırlıklı flüks, relative değer önemli)
+// Hız matrisi A → eigendeğerler: λ₁=0, λ₂<0, λ₃<0
+// |λ₂|: efektif karışım hızı (küçük = yavaş karışım = büyük ölü bölge etkisi)
+function cfdMarkovAnalysis(p) {
+  const { NR, NZ, vmag, ur, uz } = CFD;
+  if (!vmag || vmag.length === 0 || !ur || !uz) return null;
+
+  const N           = p.rpm / 60;
+  const vtip        = Math.PI * p.D * N;
+  const vtip_ref    = Math.PI * p.D * 5;
+  const threshDead  = 0.05 * vtip_ref;
+  const threshAct   = 0.30 * vtip;
+
+  // Bölge ataması ve hacim ağırlıkları
+  const zone = new Uint8Array(NR * NZ);
+  const vol  = new Float64Array(3);
+  for (let iz = 1; iz < NZ - 1; iz++) {
+    for (let ir = 1; ir < NR - 1; ir++) {
+      const i   = iz * NR + ir;
+      const r_w = ir + 0.5;
+      const v   = vmag[i];
+      const z   = v < threshDead ? 2 : v < threshAct ? 1 : 0;
+      zone[i] = z;
+      vol[z] += r_w;
+    }
+  }
+
+  // Simetrik akış flüksü matrisi Q[from][to]
+  const Q = [[0,0,0],[0,0,0],[0,0,0]];
+
+  // Radyal ara yüzler (ur)
+  for (let iz = 1; iz < NZ - 1; iz++) {
+    for (let ir = 1; ir < NR - 2; ir++) {
+      const zA = zone[iz * NR + ir], zB = zone[iz * NR + ir + 1];
+      if (zA !== zB) {
+        const f = Math.abs(ur[iz * NR + ir]) * (ir + 1);
+        Q[zA][zB] += f; Q[zB][zA] += f;
+      }
+    }
+  }
+
+  // Eksenel ara yüzler (uz)
+  for (let iz = 1; iz < NZ - 2; iz++) {
+    for (let ir = 1; ir < NR - 1; ir++) {
+      const zA = zone[iz * NR + ir], zB = zone[(iz + 1) * NR + ir];
+      if (zA !== zB) {
+        const f = Math.abs(uz[iz * NR + ir]) * (ir + 0.5);
+        Q[zA][zB] += f; Q[zB][zA] += f;
+      }
+    }
+  }
+
+  // Simetrik S matrisi: S[i][j] = Q[i][j]/sqrt(vol[i]*vol[j])
+  // Simetri sayesinde tüm özdeğerler gerçek — disc < 0 riski yok.
+  // λ₁=0 sağ özvektörü: [√vol[0], √vol[1], √vol[2]]
+  const sqv = [Math.sqrt(Math.max(vol[0],1e-20)), Math.sqrt(Math.max(vol[1],1e-20)), Math.sqrt(Math.max(vol[2],1e-20))];
+  const S = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i = 0; i < 3; i++) {
+    let dout = 0;
+    for (let j = 0; j < 3; j++) {
+      if (i === j) continue;
+      S[i][j] = Q[i][j] / (sqv[i] * sqv[j]);
+      dout += Q[i][j];
+    }
+    S[i][i] = vol[i] > 1e-10 ? -dout / vol[i] : 0;
+  }
+
+  // λ(λ²−tr(S)·λ+M₂)=0 — simetrik neg-semidefinite için disc=(λ₂−λ₃)²≥0
+  const trA = S[0][0] + S[1][1] + S[2][2];
+  const M2  = S[0][0]*S[1][1] - S[0][1]*S[1][0]
+            + S[0][0]*S[2][2] - S[0][2]*S[2][0]
+            + S[1][1]*S[2][2] - S[1][2]*S[2][1];
+
+  const sq   = Math.sqrt(Math.max(0, trA * trA - 4 * M2));
+  const lam2 = (trA + sq) / 2; // daha az negatif — yavaş mod
+  const lam3 = (trA - sq) / 2;
+
+  const totalVol = vol[0] + vol[1] + vol[2];
+  return {
+    lambda2:  lam2,
+    lambda3:  lam3,
+    exchRate: Math.abs(lam2), // efektif karışım hızı (büyük = iyi)
+    zoneVols: [
+      totalVol > 0 ? vol[0] / totalVol : 0,
+      totalVol > 0 ? vol[1] / totalVol : 0,
+      totalVol > 0 ? vol[2] / totalVol : 0,
+    ],
+  };
 }
 
 // ─── Web Worker Handler ────────────────────────────────────────
@@ -556,6 +684,7 @@ if (typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScop
           uz:        new Float64Array(CFD.uz),
           vmag:      new Float64Array(CFD.vmag),
           shearRate: new Float64Array(CFD.shearRate),
+          deadZone:  CFD._deadZoneCache,
         });
         break;
       }

@@ -90,6 +90,11 @@ function cfdDrawSideView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
+  // Sabit referans: 300 rpm'deki vtip — RPM arttıkça renk doygunluğu artar
+  // Grenville & Nienow (2004): bulk velocity ~ 0.1–0.3 × vtip, impeller zone ~ 0.5–1.0 × vtip
+  const vtip_ref = Math.PI * p.D * 5; // 300 rpm @ impeller D
+  const gamma_ref = vtip_ref / (p.D * 0.5); // ≈ 31.4 s⁻¹ @ 300 rpm
+
   // ── Hücreleri çiz: silindirik bölgeye kırp ──────────────────
   ctx.save();
   ctx.beginPath();
@@ -103,9 +108,9 @@ function cfdDrawSideView(canvas, p) {
       // Konsantrasyon: anlık Cmax'a göre normalize.
       // Dağıldıkça Cmax mean'e iner, her hücrenin C/Cmax → 1 olur (her yer kırmızı).
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-      else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
-      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / (vmax / (p.D * 0.5) + 1e-10));
-      else val = CFD.vmag[idx] / vmax;
+      else if (CFD.viewMode === 'velocity') val = Math.min(1, CFD.vmag[idx] / vtip_ref);
+      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
+      else val = Math.min(1, CFD.vmag[idx] / vtip_ref); // deadzone background
 
       const color = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
       const y = liqTopY + (CFD.NZ - 1 - iz) * cellH;
@@ -471,6 +476,9 @@ function cfdDrawTopView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
+  const vtip_ref = Math.PI * p.D * 5; // 300 rpm sabit referans
+  const gamma_ref = vtip_ref / (p.D * 0.5);
+
   const nBlades = p.impeller === 'rushton' ? 6 : p.impeller === 'anchor' ? 2 : 4;
   const rot = (CFD.time * p.rpm / 60 * 2 * Math.PI) % (2 * Math.PI);
 
@@ -485,11 +493,29 @@ function cfdDrawTopView(canvas, p) {
       const idx = cfdIdx(ir, iz_imp);
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-      else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
-      else val = CFD.vmag[idx] / vmax;
+      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
+      else val = Math.min(1, CFD.vmag[idx] / vtip_ref); // velocity + deadzone background
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
       const f = (ir + 1) / CFD.NR;
       ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
+    }
+
+    // Dead zone overlay (kare) — ring başına evenodd clip ile çiz
+    if (CFD.viewMode === 'deadzone') {
+      const mask = cfdDeadZoneMask(p);
+      for (let ir = 0; ir < CFD.NR; ir++) {
+        if (!mask[cfdIdx(ir, iz_imp)]) continue;
+        const f  = (ir + 1) / CFD.NR;
+        const fi = ir / CFD.NR;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
+        if (fi > 0) ctx.rect(cx - fi * maxHalfW, cy - fi * maxHalfH, fi * maxHalfW * 2, fi * maxHalfH * 2);
+        ctx.clip('evenodd');
+        ctx.fillStyle = 'rgba(239,68,68,0.65)';
+        ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
+        ctx.restore();
+      }
     }
 
     // Tank wall
@@ -535,8 +561,8 @@ function cfdDrawTopView(canvas, p) {
 
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-      else if (CFD.viewMode === 'velocity') val = CFD.vmag[idx] / vmax;
-      else val = CFD.vmag[idx] / vmax;
+      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
+      else val = Math.min(1, CFD.vmag[idx] / vtip_ref); // velocity + deadzone background
 
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
 
@@ -549,6 +575,27 @@ function cfdDrawTopView(canvas, p) {
         ctx.arc(cx, cy, r1, a2, a1, true);
         ctx.closePath();
         ctx.fill();
+      }
+    }
+
+    // Dead zone overlay (silindirik)
+    if (CFD.viewMode === 'deadzone') {
+      const mask = cfdDeadZoneMask(p);
+      for (let ir = 0; ir < CFD.NR; ir++) {
+        if (!mask[cfdIdx(ir, iz_imp)]) continue;
+        const r1 = (ir / CFD.NR) * maxR;
+        const r2 = ((ir + 1) / CFD.NR) * maxR;
+        for (let it = 0; it < nTheta; it++) {
+          const a1 = it * dTheta;
+          const a2 = (it + 1) * dTheta;
+          ctx.fillStyle = 'rgba(239,68,68,0.65)';
+          ctx.beginPath();
+          ctx.moveTo(cx + r1 * Math.cos(a1), cy + r1 * Math.sin(a1));
+          ctx.arc(cx, cy, r2, a1, a2);
+          ctx.arc(cx, cy, r1, a2, a1, true);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 

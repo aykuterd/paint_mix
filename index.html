@@ -454,8 +454,8 @@
                                 <input type="number" id="density" value="1200" class="input-dark mt-1">
                             </div>
                             <div>
-                                <label class="text-[9px] font-bold text-slate-500 uppercase">Viskozite (Pa·s)</label>
-                                <input type="number" id="viscosity" value="0.5" step="0.1" class="input-dark mt-1">
+                                <label class="text-[9px] font-bold text-slate-500 uppercase">Viskozite (cP)</label>
+                                <input type="number" id="viscosity" value="500" step="10" min="1" class="input-dark mt-1">
                             </div>
                         </div>
                     </div>
@@ -466,9 +466,14 @@
                             <span class="text-[9px] font-black uppercase tracking-wider">Çalışma Koşulları</span>
                         </div>
                         <div>
-                            <div class="flex justify-between mb-2">
+                            <div class="flex justify-between items-center mb-2">
                                 <label class="text-[9px] font-black text-slate-500 uppercase">Motor Hızı</label>
-                                <span id="rpmLabel" class="text-xs text-orange-500 font-black mono">100 RPM</span>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="calcOptimalRPM()" class="text-[9px] font-black px-2 py-0.5 rounded border transition hover:opacity-80" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.35);color:#4ade80">
+                                        ⚙ Optimize Et
+                                    </button>
+                                    <span id="rpmLabel" class="text-xs text-orange-500 font-black mono">100 RPM</span>
+                                </div>
                             </div>
                             <input type="range" id="rpm" min="0" max="3000" step="10" value="100" class="w-full">
                             <div class="flex justify-between mt-1">
@@ -779,6 +784,18 @@
                         </div>
                         <div id="njsDetail" class="text-[9px] text-slate-300 leading-relaxed mb-2"></div>
                         <p class="text-[9px] text-slate-300 leading-relaxed"><span class="text-purple-400">Zwietering (1958) Njs korelasyonu:</span> Pigmentin tanka dibine çökmemesi için gereken minimum RPM. Bu değerin altında pigment dibe oturur, boya homojen olmaz. Pigment tipi ve yüklemesi girilmeden hesaplanamaz.</p>
+                    </div>
+
+                    <!-- Optimizer Card -->
+                    <div id="optimizerCard" class="hidden bg-slate-900/60 p-4 rounded-xl border border-green-500/30">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="metric-label text-green-400">🎯 Önerilen Optimum RPM</p>
+                            <p id="optRpmVal" class="text-xl font-black mono text-green-400">-- RPM</p>
+                        </div>
+                        <div id="optRpmStats" class="text-[9px] text-slate-300 space-y-1 mb-3 leading-relaxed"></div>
+                        <button onclick="applyOptimalRPM()" class="w-full text-[9px] font-black py-1.5 rounded border transition hover:opacity-80" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:#4ade80">
+                            ▶ Bu RPM'i Uygula
+                        </button>
                     </div>
 
                     <!-- Np -->
@@ -1953,7 +1970,7 @@
                 <p class="text-[9px] text-slate-300 mt-1">Kg/L cinsinden biliyorsanız ×1000 çarpın</p>
               </div>
               <div>
-                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Viskozite (mPa·s = cP)</label>
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-wider block mb-1">Viskozite (cP)</label>
                 <input type="number" id="urun_viskozite" value="5000" step="100" class="input-dark">
                 <p class="text-[9px] text-slate-300 mt-1">Krebs (KU) → cP yaklaşık: 100KU≈1000cP · Stormer ile ölçün</p>
               </div>
@@ -2283,8 +2300,8 @@
 
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Viskozite (Pa·s)</label>
-                  <input type="number" id="cfd_visc" value="0.5" step="0.1" min="0.01" class="input-dark">
+                  <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Viskozite (cP)</label>
+                  <input type="number" id="cfd_visc" value="500" step="10" min="1" class="input-dark">
                 </div>
                 <div>
                   <label class="text-[9px] font-black text-slate-500 uppercase block mb-1">Yoğunluk (kg/m³)</label>
@@ -2781,7 +2798,7 @@
                 impeller: document.getElementById('impellerType').value,
                 rpm: parseFloat(document.getElementById('rpm').value),
                 density: parseFloat(document.getElementById('density').value),
-                viscosity: parseFloat(document.getElementById('viscosity').value),
+                viscosity: parseFloat(document.getElementById('viscosity').value) / 1000,
                 D: parseFloat(document.getElementById('impellerD').value),
                 vD: parseFloat(document.getElementById('vesselD').value),
                 vH: parseFloat(document.getElementById('vesselH').value),
@@ -2878,6 +2895,105 @@
                 njs, njsRpm, njsOk,
                 motorWarn
             };
+        }
+
+        let _optRpm = null;
+
+        function calcOptimalRPM() {
+            const p = getParams();
+            const spec = specs[p.impeller];
+            const card = document.getElementById('optimizerCard');
+            const valEl = document.getElementById('optRpmVal');
+            const statsEl = document.getElementById('optRpmStats');
+
+            const nu = p.viscosity / p.density;
+            const Drho = p.pigRho - p.density;
+
+            if (Drho <= 0 || p.pigDp <= 0 || p.pigX <= 0 || p.D <= 0) {
+                valEl.innerText = '-- RPM';
+                statsEl.innerHTML = '<span style="color:#f87171">⚠ Pigment verisi eksik — Njs hesaplanamaz. Pigment bölümünü doldurun.</span>';
+                card.classList.remove('hidden');
+                _optRpm = null;
+                return;
+            }
+
+            const njs_rps = p.njsS
+                * Math.pow(nu, 0.1)
+                * Math.pow(p.pigDp, 0.2)
+                * Math.pow(9.81, 0.45)
+                * Math.pow(Drho / p.density, 0.45)
+                * Math.pow(p.pigX, 0.13)
+                / Math.pow(p.D, 0.85);
+            const njsRpm = njs_rps * 60;
+
+            let rpmOpt = njsRpm * 1.3;
+            const vortexG = 9.81;
+            const R = p.vD / 2;
+            const warnings = [];
+
+            // Motor kısıtı
+            let rpmMotorMax = null;
+            if (p.motorPower && p.motorPower > 0) {
+                const n_max = Math.pow(p.motorPower / (spec.np * p.density * Math.pow(p.D, 5)), 1/3);
+                rpmMotorMax = n_max * 60;
+                if (rpmOpt > rpmMotorMax) {
+                    rpmOpt = rpmMotorMax;
+                    warnings.push(`⚠ Motor sınırlandı: ${rpmMotorMax.toFixed(0)} RPM maks.`);
+                }
+            }
+
+            // Vortex taşma kısıtı — binary search
+            const calcOverflow = (rpm) => {
+                const n = rpm / 60;
+                const vRaw = (Math.PI * Math.PI * n * n * Math.pow(p.D, 4)) / (8 * vortexG * R * R);
+                const tip = Math.PI * p.D * n;
+                const fr = tip > 5 ? 1.0 : tip > 2 ? 0.5 : 0.2;
+                const vDepth = vRaw * fr;
+                return p.vH - (p.lH + vDepth / 2);
+            };
+
+            if (calcOverflow(rpmOpt) < 0.02) {
+                warnings.push('⚠ Vortex taşma sınırında — RPM azaltıldı');
+                let lo = njsRpm * 1.05, hi = rpmOpt;
+                for (let i = 0; i < 40; i++) {
+                    const mid = (lo + hi) / 2;
+                    if (calcOverflow(mid) >= 0.02) lo = mid; else hi = mid;
+                }
+                rpmOpt = lo;
+            }
+
+            rpmOpt = Math.max(Math.round(rpmOpt / 10) * 10, 10);
+            _optRpm = rpmOpt;
+
+            // İstatistikler
+            const n_f = rpmOpt / 60;
+            const Q_m3s = spec.nq * n_f * Math.pow(p.D, 3);
+            const liquidVol = (Math.PI / 4) * Math.pow(p.vD, 2) * p.lH;
+            const circTime = Q_m3s > 0 ? liquidVol / Q_m3s : null;
+            const blend3 = circTime ? (circTime * 3 / 60).toFixed(1) : '--';
+            const blend5 = circTime ? (circTime * 5 / 60).toFixed(1) : '--';
+            const vtip_f = (Math.PI * p.D * n_f).toFixed(2);
+            const ratio = (rpmOpt / njsRpm).toFixed(2);
+
+            valEl.innerText = `${rpmOpt} RPM`;
+            valEl.style.color = '#4ade80';
+
+            const rows = [
+                `✓ Njs: ${njsRpm.toFixed(0)} RPM → ${ratio}× güvenlik`,
+                `✓ Uç hızı: ${vtip_f} m/s`,
+                `✓ Homojenlik: ${blend3}–${blend5} dk (3–5 sirkülasyon)`,
+                `✓ Vortex: taşma yok`,
+                ...warnings
+            ];
+            statsEl.innerHTML = rows.map(r => `<div style="color:${r.startsWith('⚠') ? '#fbbf24' : '#86efac'}">${r}</div>`).join('');
+            card.classList.remove('hidden');
+        }
+
+        function applyOptimalRPM() {
+            if (_optRpm === null) return;
+            const slider = document.getElementById('rpm');
+            slider.value = _optRpm;
+            slider.dispatchEvent(new Event('input'));
         }
 
         function init() {
@@ -3249,7 +3365,7 @@
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
                             <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">Viskozite</div>
-                            <div class="font-black mono text-slate-200">${a.viscosity} Pa·s</div>
+                            <div class="font-black mono text-slate-200">${(a.viscosity * 1000).toFixed(0)} cP</div>
                         </div>
                         <div class="bg-black/30 p-2 rounded-lg">
                             <div class="text-[9px] text-slate-300 uppercase mono mb-0.5">D pervane</div>
@@ -5237,7 +5353,7 @@ function mixApplyTankSelection(kod) {
     <p class="font-black text-slate-200 text-sm">Boya Özellikleri</p>
     <table class="w-full mt-2 text-xs">
       <tr class="border-b border-slate-700"><td class="py-1 text-slate-400 w-40">Yoğunluk ρ (kg/m³)</td><td class="py-1 text-slate-300">Su bazlı boya ≈ 1100–1400. Solvent bazlı ≈ 900–1100. Re ve Njs hesabında kullanılır.</td></tr>
-      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Viskozite μ (mPa·s)</td><td class="py-1 text-slate-300">Su ≈ 1 mPa·s. Düşük visc boya ≈ 100–500. Yüksek visc baz ≈ 5000–50000. Re hesabını doğrudan etkiler.</td></tr>
+      <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Viskozite μ (cP)</td><td class="py-1 text-slate-300">Su ≈ 1 cP. Düşük visc boya ≈ 100–500 cP. Yüksek visc baz ≈ 5000–50000 cP. Re hesabını doğrudan etkiler.</td></tr>
       <tr class="border-b border-slate-700"><td class="py-1 text-slate-400">Pigment Yoğunluğu ρ_p</td><td class="py-1 text-slate-300">Sadece pigment malzemesinin öz yoğunluğu (pasta değil). TiO₂=4200, Fe₂O₃=4800, CB=1800 kg/m³.</td></tr>
       <tr><td class="py-1 text-slate-400">Pigment Yükü wt%</td><td class="py-1 text-slate-300">Formüldeki dibe çöken tüm katıların ağırlık yüzdesi. Organikler hafif → hesaba katmayın. TiO₂+CaCO₃+Fe₂O₃ toplayın.</td></tr>
     </table>
@@ -5659,7 +5775,7 @@ function mixApplyTankSelection(kod) {
     <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Pervane konumu C</td><td class="py-2 text-slate-400">Tabandan yükseklik</td><td class="py-2 text-slate-300">C/T = 0.20–0.35</td></tr>
     <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Dönüş hızı N</td><td class="py-2 text-slate-400">RPM</td><td class="py-2 text-slate-300">50 – 3000 RPM</td></tr>
     <tr class="border-b border-slate-700"><td class="py-2 text-slate-200">Pervane tipi</td><td class="py-2 text-slate-400">Akış karakteristiği</td><td class="py-2 text-slate-300">—</td></tr>
-    <tr><td class="py-2 text-slate-200">Viskozite μ</td><td class="py-2 text-slate-400">Boya dinamik viskozitesi</td><td class="py-2 text-slate-300">1 – 50.000 mPa·s</td></tr>
+    <tr><td class="py-2 text-slate-200">Viskozite μ</td><td class="py-2 text-slate-400">Boya dinamik viskozitesi</td><td class="py-2 text-slate-300">1 – 50.000 cP</td></tr>
   </table>
 </div>
               ` },

@@ -56,7 +56,7 @@ function cfdGetParams() {
     D:    parseFloat(document.getElementById('cfd_D').value),
     impH: parseFloat(document.getElementById('cfd_impH').value),
     rpm:  parseFloat(document.getElementById('cfd_rpm').value),
-    visc: parseFloat(document.getElementById('cfd_visc').value),
+    visc: parseFloat(document.getElementById('cfd_visc').value) / 1000,
     rho,
     baffle:  document.getElementById('cfd_baffle').checked,
     nonNewt: document.getElementById('cfd_nonNewt').checked,
@@ -180,6 +180,7 @@ function cfdUpdateLiqInfo(p) {
 }
 
 function cfdUpdateMetricsUI(p, stepInfo, metrics) {
+  console.log('[metricsUI]', !!p, !!stepInfo, !!metrics, 'cache=', JSON.stringify(CFD._deadZoneCache));
   const { Re, D_eff, vtip } = stepInfo;
   const { cov, homo, deadPct, t99_model } = metrics;
 
@@ -384,7 +385,27 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
         deadPct < 20 ? '⚠ Düşük hızlı bölgeler — numune çoklu noktadan alın' :
         deadPct < 35 ? '⚠ Belirgin ölü bölgeler — baffle ekleyin veya RPM artırın' :
         '❌ Geniş ölü bölgeler — geometri bu boya için uygunsuz'}
-    </p>`;
+    </p>
+    ${(() => {
+      const mk = CFD._deadZoneCache && CFD._deadZoneCache.markov;
+      console.log('[Markov debug]', JSON.stringify(CFD._deadZoneCache));
+      if (!mk) return '<p style="color:#f87171;font-size:9px">Markov: cache yok</p>';
+      const pct = v => (v * 100).toFixed(0);
+      const exchCol = mk.exchRate > 0.5 ? '#4ade80' : mk.exchRate > 0.1 ? '#fbbf24' : '#f87171';
+      return `<div class="mt-2 rounded-lg p-2" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2)">
+        <div class="text-[8px] mono mb-1" style="color:#a5b4fc">3-Bölge Markov Analizi</div>
+        <div class="grid grid-cols-3 gap-1 text-center mb-1.5">
+          <div><div class="text-[7px]" style="color:#94a3b8">Aktif</div><div class="text-[9px] font-bold mono" style="color:#4ade80">${pct(mk.zoneVols[0])}%</div></div>
+          <div><div class="text-[7px]" style="color:#94a3b8">Bulk</div><div class="text-[9px] font-bold mono" style="color:#fbbf24">${pct(mk.zoneVols[1])}%</div></div>
+          <div><div class="text-[7px]" style="color:#94a3b8">Ölü</div><div class="text-[9px] font-bold mono" style="color:#f87171">${pct(mk.zoneVols[2])}%</div></div>
+        </div>
+        <div class="flex justify-between text-[8px]">
+          <span style="color:#94a3b8">λ₂ = <span class="mono" style="color:${exchCol}">${mk.lambda2.toExponential(2)}</span></span>
+          <span style="color:#94a3b8">Karışım hızı: <span class="mono" style="color:${exchCol}">${mk.exchRate.toExponential(2)}</span></span>
+        </div>
+        <p class="text-[7px] italic mt-1" style="color:#475569">Fakheri & Moghaddas (IJCHE 2012) kompartman modeli</p>
+      </div>`;
+    })()}`;
 }
 
 // ─── Worker Setup ────────────────────────────────────────────
@@ -430,12 +451,14 @@ function _cfdDrawAll(p) {
 function _cfdOnWorkerMsg(e) {
   const d = e.data;
 
+  console.log('[worker msg]', d.type, d.type === 'built' ? 'deadZone=' + JSON.stringify(d.deadZone) : '');
   if (d.type === 'built') {
-    CFD.psi       = d.psi;
-    CFD.ur        = d.ur;
-    CFD.uz        = d.uz;
-    CFD.vmag      = d.vmag;
-    CFD.shearRate = d.shearRate;
+    CFD.psi           = d.psi;
+    CFD.ur            = d.ur;
+    CFD.uz            = d.uz;
+    CFD.vmag          = d.vmag;
+    CFD.shearRate     = d.shearRate;
+    if (d.deadZone) CFD._deadZoneCache = d.deadZone;
     _cfdDrawAll(cfdLastP);
     if (CFD.running) cfdWorker.postMessage({ type: 'step', p: cfdLastP, substeps: CFD.substeps });
 
@@ -470,6 +493,7 @@ function _cfdOnWorkerMsg(e) {
 
 function cfdLoop() {
   if (!CFD.running) return;
+  console.log('[cfdLoop] step=', CFD.step);
   const p = cfdGetParams();
 
   // Sub-stepping for stability
