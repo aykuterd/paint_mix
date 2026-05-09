@@ -476,14 +476,18 @@ function cfdDrawTopView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
-  // Deadzone modunda: her r-şeridinin tüm yükseklik boyunca ortalama vmag'ı
-  // → üstten bakış "sütun ortalaması" gösterir, pervane seviyesiyle değil
-  const radialAvgVmag = new Float64Array(CFD.NR);
+  // Deadzone modunda: her r-şeridinde yükseklik boyunca ölü hücre fraksiyonu
+  // Ortalama vmag impeller seviyesini içerdiğinden yanıltır — fraksiyon daha doğru.
+  const radialDeadFrac = new Float64Array(CFD.NR); // 0=tamamen aktif, 1=tamamen ölü
   if (CFD.viewMode === 'deadzone') {
+    const _thresh = 0.05 * Math.PI * p.D * 5;
     for (let ir = 0; ir < CFD.NR; ir++) {
-      let sum = 0, n = 0;
-      for (let iz = 1; iz < CFD.NZ - 1; iz++) { sum += CFD.vmag[iz * CFD.NR + ir]; n++; }
-      radialAvgVmag[ir] = n > 0 ? sum / n : 0;
+      let dead = 0, total = 0;
+      for (let iz = 1; iz < CFD.NZ - 1; iz++) {
+        if (CFD.vmag[iz * CFD.NR + ir] < _thresh) dead++;
+        total++;
+      }
+      radialDeadFrac[ir] = total > 0 ? dead / total : 0;
     }
   }
 
@@ -505,19 +509,17 @@ function cfdDrawTopView(canvas, p) {
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
       else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
-      else if (CFD.viewMode === 'deadzone') val = Math.min(1, radialAvgVmag[ir] / vtip_ref);
+      else if (CFD.viewMode === 'deadzone') val = 1 - radialDeadFrac[ir]; // 0=ölü(kırmızı), 1=aktif(mavi)
       else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
       const f = (ir + 1) / CFD.NR;
       ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
     }
 
-    // Dead zone overlay (kare) — radialAvgVmag eşiğine göre
+    // Dead zone overlay (kare) — sütun ölü fraksiyon eşiğine göre
     if (CFD.viewMode === 'deadzone') {
-      const vtip_ref2 = Math.PI * p.D * 5;
-      const thresh = 0.05 * vtip_ref2;
       for (let ir = 0; ir < CFD.NR; ir++) {
-        if (radialAvgVmag[ir] >= thresh) continue;
+        if (radialDeadFrac[ir] < 0.3) continue; // sütunun <30%'ı ölüyse overlay yok
         const f  = (ir + 1) / CFD.NR;
         const fi = ir / CFD.NR;
         ctx.save();
@@ -575,7 +577,7 @@ function cfdDrawTopView(canvas, p) {
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
       else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
-      else if (CFD.viewMode === 'deadzone') val = Math.min(1, radialAvgVmag[ir] / vtip_ref);
+      else if (CFD.viewMode === 'deadzone') val = 1 - radialDeadFrac[ir]; // 0=ölü(kırmızı)
       else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
 
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
@@ -592,12 +594,10 @@ function cfdDrawTopView(canvas, p) {
       }
     }
 
-    // Dead zone overlay (silindirik) — radialAvgVmag eşiğine göre
+    // Dead zone overlay (silindirik) — sütun ölü fraksiyon eşiğine göre
     if (CFD.viewMode === 'deadzone') {
-      const vtip_ref2 = Math.PI * p.D * 5;
-      const thresh = 0.05 * vtip_ref2;
       for (let ir = 0; ir < CFD.NR; ir++) {
-        if (radialAvgVmag[ir] >= thresh) continue;
+        if (radialDeadFrac[ir] < 0.3) continue;
         const r1 = (ir / CFD.NR) * maxR;
         const r2 = ((ir + 1) / CFD.NR) * maxR;
         for (let it = 0; it < nTheta; it++) {
