@@ -476,6 +476,17 @@ function cfdDrawTopView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
+  // Deadzone modunda: her r-şeridinin tüm yükseklik boyunca ortalama vmag'ı
+  // → üstten bakış "sütun ortalaması" gösterir, pervane seviyesiyle değil
+  const radialAvgVmag = new Float64Array(CFD.NR);
+  if (CFD.viewMode === 'deadzone') {
+    for (let ir = 0; ir < CFD.NR; ir++) {
+      let sum = 0, n = 0;
+      for (let iz = 1; iz < CFD.NZ - 1; iz++) { sum += CFD.vmag[iz * CFD.NR + ir]; n++; }
+      radialAvgVmag[ir] = n > 0 ? sum / n : 0;
+    }
+  }
+
   const vtip_ref = Math.PI * p.D * 5; // 300 rpm sabit referans
   const gamma_ref = vtip_ref / (p.D * 0.5);
 
@@ -494,17 +505,19 @@ function cfdDrawTopView(canvas, p) {
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
       else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
-      else val = Math.min(1, CFD.vmag[idx] / vtip_ref); // velocity + deadzone background
+      else if (CFD.viewMode === 'deadzone') val = Math.min(1, radialAvgVmag[ir] / vtip_ref);
+      else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
       const f = (ir + 1) / CFD.NR;
       ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
     }
 
-    // Dead zone overlay (kare) — ring başına evenodd clip ile çiz
+    // Dead zone overlay (kare) — radialAvgVmag eşiğine göre
     if (CFD.viewMode === 'deadzone') {
-      const mask = cfdDeadZoneMask(p);
+      const vtip_ref2 = Math.PI * p.D * 5;
+      const thresh = 0.05 * vtip_ref2;
       for (let ir = 0; ir < CFD.NR; ir++) {
-        if (!mask[cfdIdx(ir, iz_imp)]) continue;
+        if (radialAvgVmag[ir] >= thresh) continue;
         const f  = (ir + 1) / CFD.NR;
         const fi = ir / CFD.NR;
         ctx.save();
@@ -547,7 +560,7 @@ function cfdDrawTopView(canvas, p) {
     }
 
     ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
-    ctx.fillText('ÜSTTEN BAKIŞ (z=pervane)  W\xD7L=' + wVal.toFixed(1) + '\xD7' + lVal.toFixed(1) + 'm', cx, H - 4);
+    ctx.fillText((CFD.viewMode === 'deadzone' ? 'ÜSTTEN BAKIŞ (yük.ort.)' : 'ÜSTTEN BAKIŞ (z=pervane)') + '  W\xD7L=' + wVal.toFixed(1) + '\xD7' + lVal.toFixed(1) + 'm', cx, H - 4);
 
   } else {
     const maxR = Math.min(W, H) / 2 - 20;
@@ -562,7 +575,8 @@ function cfdDrawTopView(canvas, p) {
       let val;
       if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
       else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
-      else val = Math.min(1, CFD.vmag[idx] / vtip_ref); // velocity + deadzone background
+      else if (CFD.viewMode === 'deadzone') val = Math.min(1, radialAvgVmag[ir] / vtip_ref);
+      else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
 
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
 
@@ -578,11 +592,12 @@ function cfdDrawTopView(canvas, p) {
       }
     }
 
-    // Dead zone overlay (silindirik)
+    // Dead zone overlay (silindirik) — radialAvgVmag eşiğine göre
     if (CFD.viewMode === 'deadzone') {
-      const mask = cfdDeadZoneMask(p);
+      const vtip_ref2 = Math.PI * p.D * 5;
+      const thresh = 0.05 * vtip_ref2;
       for (let ir = 0; ir < CFD.NR; ir++) {
-        if (!mask[cfdIdx(ir, iz_imp)]) continue;
+        if (radialAvgVmag[ir] >= thresh) continue;
         const r1 = (ir / CFD.NR) * maxR;
         const r2 = ((ir + 1) / CFD.NR) * maxR;
         for (let it = 0; it < nTheta; it++) {
@@ -631,7 +646,7 @@ function cfdDrawTopView(canvas, p) {
     }
 
     ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
-    ctx.fillText('ÜSTTEN BAKIŞ (z = pervane)', cx, H - 4);
+    ctx.fillText(CFD.viewMode === 'deadzone' ? 'ÜSTTEN BAKIŞ (yükseklik ort.)' : 'ÜSTTEN BAKIŞ (z = pervane)', cx, H - 4);
   }
 }
 
