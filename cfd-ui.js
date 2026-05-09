@@ -1,7 +1,6 @@
 // ============================================================
 // CFD UI CONTROLLER — Event Handlers + Main Loop
 // ============================================================
-
 let cfdGeometry = 'cylindrical'; // 'cylindrical' | 'square'
 let cfdWorker   = null;          // Web Worker instance (null = sync fallback)
 let cfdLastP    = null;          // Son kullanılan params (worker result handler'da render için)
@@ -180,7 +179,6 @@ function cfdUpdateLiqInfo(p) {
 }
 
 function cfdUpdateMetricsUI(p, stepInfo, metrics) {
-  console.log('[metricsUI]', !!p, !!stepInfo, !!metrics, 'cache=', JSON.stringify(CFD._deadZoneCache));
   const { Re, D_eff, vtip } = stepInfo;
   const { cov, homo, deadPct, t99_model } = metrics;
 
@@ -388,22 +386,80 @@ function cfdUpdateMetricsUI(p, stepInfo, metrics) {
     </p>
     ${(() => {
       const mk = CFD._deadZoneCache && CFD._deadZoneCache.markov;
-      console.log('[Markov debug]', JSON.stringify(CFD._deadZoneCache));
-      if (!mk) return '<p style="color:#f87171;font-size:9px">Markov: cache yok</p>';
+      if (!mk) return '';
       const pct = v => (v * 100).toFixed(0);
-      const exchCol = mk.exchRate > 0.5 ? '#4ade80' : mk.exchRate > 0.1 ? '#fbbf24' : '#f87171';
-      return `<div class="mt-2 rounded-lg p-2" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2)">
-        <div class="text-[8px] mono mb-1" style="color:#a5b4fc">3-Bölge Markov Analizi</div>
-        <div class="grid grid-cols-3 gap-1 text-center mb-1.5">
-          <div><div class="text-[7px]" style="color:#94a3b8">Aktif</div><div class="text-[9px] font-bold mono" style="color:#4ade80">${pct(mk.zoneVols[0])}%</div></div>
-          <div><div class="text-[7px]" style="color:#94a3b8">Bulk</div><div class="text-[9px] font-bold mono" style="color:#fbbf24">${pct(mk.zoneVols[1])}%</div></div>
-          <div><div class="text-[7px]" style="color:#94a3b8">Ölü</div><div class="text-[9px] font-bold mono" style="color:#f87171">${pct(mk.zoneVols[2])}%</div></div>
+      const deadPctMk = mk.zoneVols[2] * 100;
+      const rate = mk.exchRate;
+      const rateCol = rate > 0.5 ? '#4ade80' : rate > 0.1 ? '#fbbf24' : '#f87171';
+
+      // λ₂ yorumu: ölü bölgenin bulk ile alışveriş hızı
+      const rateLabel = rate > 0.5 ? 'Hızlı' : rate > 0.1 ? 'Orta' : 'Yavaş';
+      const rateDesc  = rate > 0.5
+        ? 'Ölü bölge ve bulk arasında güçlü madde alışverişi var. Stagnant köşeler kısa sürede tazeleniyor.'
+        : rate > 0.1
+        ? 'Ölü bölge bulk ile makul alışveriş yapıyor. Uzun karışım süreleri beklenir; numune çoklu noktadan alın.'
+        : 'Ölü bölge neredeyse izole — malzeme oraya girmiyor ya da çıkmıyor. Geometri veya RPM değiştirilmeli.';
+
+      const deadDesc = deadPctMk < 10
+        ? 'Ölü bölge hacmi küçük — pigment tüm tanka ulaşabiliyor.'
+        : deadPctMk < 25
+        ? 'Orta düzeyde ölü bölge — bu hacim homojenleşmeden önce "cep" gibi davranır.'
+        : 'Geniş ölü bölge — renk tutarsızlığı riski yüksek, boya kalitesi düşebilir.';
+
+      return `<div class="mt-3 rounded-xl p-3" style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.25)">
+        <div class="text-xs font-black mb-2" style="color:#a5b4fc; letter-spacing:0.04em">3-BÖLGE MARKOV ANALİZİ</div>
+
+        <!-- Bölge hacimleri -->
+        <div class="grid grid-cols-3 gap-1.5 text-center mb-3">
+          <div class="rounded-lg py-1.5" style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2)">
+            <div class="text-[9px] mb-0.5" style="color:#86efac">Aktif</div>
+            <div class="text-sm font-black mono" style="color:#4ade80">${pct(mk.zoneVols[0])}%</div>
+            <div class="text-[8px] mt-0.5" style="color:#64748b">yüksek hız</div>
+          </div>
+          <div class="rounded-lg py-1.5" style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2)">
+            <div class="text-[9px] mb-0.5" style="color:#fde68a">Bulk</div>
+            <div class="text-sm font-black mono" style="color:#fbbf24">${pct(mk.zoneVols[1])}%</div>
+            <div class="text-[8px] mt-0.5" style="color:#64748b">sirkülasyon</div>
+          </div>
+          <div class="rounded-lg py-1.5" style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2)">
+            <div class="text-[9px] mb-0.5" style="color:#fca5a5">Ölü</div>
+            <div class="text-sm font-black mono" style="color:#f87171">${pct(mk.zoneVols[2])}%</div>
+            <div class="text-[8px] mt-0.5" style="color:#64748b">durgun</div>
+          </div>
         </div>
-        <div class="flex justify-between text-[8px]">
-          <span style="color:#94a3b8">λ₂ = <span class="mono" style="color:${exchCol}">${mk.lambda2.toExponential(2)}</span></span>
-          <span style="color:#94a3b8">Karışım hızı: <span class="mono" style="color:${exchCol}">${mk.exchRate.toExponential(2)}</span></span>
+
+        <!-- λ₂ göstergesi -->
+        <div class="rounded-lg p-2 mb-2" style="background:rgba(0,0,0,0.25)">
+          <div class="flex justify-between items-baseline mb-1">
+            <span class="text-[10px] font-black" style="color:#a5b4fc">λ₂ (ikinci özdeğer)</span>
+            <span class="mono font-black text-sm" style="color:${rateCol}">${mk.lambda2.toFixed(3)}</span>
+          </div>
+          <div class="flex justify-between items-baseline">
+            <span class="text-[10px]" style="color:#94a3b8">Alışveriş hızı |λ₂|</span>
+            <span class="mono font-black text-sm" style="color:${rateCol}">${rate.toFixed(3)} · <span class="text-[9px]">${rateLabel}</span></span>
+          </div>
         </div>
-        <p class="text-[7px] italic mt-1" style="color:#475569">Fakheri & Moghaddas (IJCHE 2012) kompartman modeli</p>
+
+        <!-- Yorum metni -->
+        <div class="rounded-lg p-2 mb-2" style="background:rgba(${rate > 0.5 ? '74,222,128' : rate > 0.1 ? '251,191,36' : '248,113,113'},0.06);border-left:3px solid ${rateCol}">
+          <p class="text-[10px] leading-relaxed font-bold mb-0.5" style="color:${rateCol}">Alışveriş: ${rateLabel}</p>
+          <p class="text-[10px] leading-relaxed" style="color:#cbd5e1">${rateDesc}</p>
+        </div>
+        <div class="rounded-lg p-2 mb-2" style="background:rgba(0,0,0,0.18)">
+          <p class="text-[10px] leading-relaxed font-bold mb-0.5" style="color:${deadPctMk < 10 ? '#4ade80' : deadPctMk < 25 ? '#fbbf24' : '#f87171'}">Ölü bölge: ${pct(mk.zoneVols[2])}%</p>
+          <p class="text-[10px] leading-relaxed" style="color:#cbd5e1">${deadDesc}</p>
+        </div>
+
+        <!-- Nasıl okunur? -->
+        <div class="rounded-lg p-2" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15)">
+          <p class="text-[10px] font-black mb-1" style="color:#818cf8">λ₂ nasıl okunur?</p>
+          <p class="text-[10px] leading-relaxed" style="color:#94a3b8">
+            λ₂, ölü bölge ile bulk arasındaki en yavaş madde alışverişini temsil eder.
+            <b style="color:#c7d2fe">|λ₂| büyük → karışım hızlı</b>, sıfıra yakın → ölü bölge izole.
+            Ölü bölge yüksekse RPM artırın, farklı pervane veya baffle deneyin.
+          </p>
+          <p class="text-[10px] italic mt-1" style="color:#475569">Fakheri & Moghaddas, IJCHE Vol.9 (2012)</p>
+        </div>
       </div>`;
     })()}`;
 }
@@ -451,7 +507,6 @@ function _cfdDrawAll(p) {
 function _cfdOnWorkerMsg(e) {
   const d = e.data;
 
-  console.log('[worker msg]', d.type, d.type === 'built' ? 'deadZone=' + JSON.stringify(d.deadZone) : '');
   if (d.type === 'built') {
     CFD.psi           = d.psi;
     CFD.ur            = d.ur;
@@ -493,7 +548,6 @@ function _cfdOnWorkerMsg(e) {
 
 function cfdLoop() {
   if (!CFD.running) return;
-  console.log('[cfdLoop] step=', CFD.step);
   const p = cfdGetParams();
 
   // Sub-stepping for stability
