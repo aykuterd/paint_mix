@@ -511,18 +511,28 @@ function cfdDrawTopView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
-  // Deadzone modunda: her r-şeridinde yükseklik boyunca ölü hücre fraksiyonu
-  // Ortalama vmag impeller seviyesini içerdiğinden yanıltır — fraksiyon daha doğru.
-  const radialDeadFrac = new Float64Array(CFD.NR); // 0=tamamen aktif, 1=tamamen ölü
-  if (CFD.viewMode === 'deadzone') {
+  // Her r-şeridinde yükseklik boyunca ortalamalar (iz_imp dilimi yanıltıcı olabilir)
+  const radialDeadFrac = new Float64Array(CFD.NR);
+  const radialAvgC     = new Float64Array(CFD.NR);
+  const radialAvgV     = new Float64Array(CFD.NR);
+  const radialAvgG     = new Float64Array(CFD.NR);
+
+  {
     const _thresh = 0.05 * Math.PI * p.D * 5;
     for (let ir = 0; ir < CFD.NR; ir++) {
-      let dead = 0, total = 0;
+      let dead = 0, sumC = 0, sumV = 0, sumG = 0, total = 0;
       for (let iz = 1; iz < CFD.NZ - 1; iz++) {
-        if (CFD.vmag[iz * CFD.NR + ir] < _thresh) dead++;
+        const k = iz * CFD.NR + ir;
+        if (CFD.vmag[k] < _thresh) dead++;
+        sumC += CFD.C[k];
+        sumV += CFD.vmag[k];
+        sumG += CFD.shearRate ? CFD.shearRate[k] : 0;
         total++;
       }
       radialDeadFrac[ir] = total > 0 ? dead / total : 0;
+      radialAvgC[ir]     = total > 0 ? sumC / total : 0;
+      radialAvgV[ir]     = total > 0 ? sumV / total : 0;
+      radialAvgG[ir]     = total > 0 ? sumG / total : 0;
     }
   }
 
@@ -540,12 +550,11 @@ function cfdDrawTopView(canvas, p) {
 
     // Concentric rectangles outside-in (outer fill, inner overwrites → ring effect)
     for (let ir = CFD.NR - 1; ir >= 0; ir--) {
-      const idx = cfdIdx(ir, iz_imp);
       let val;
-      if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
+      if (CFD.viewMode === 'concentration') val = radialAvgC[ir] / cmax;
+      else if (CFD.viewMode === 'viscosity') val = Math.min(1, radialAvgG[ir] / gamma_ref);
       else if (CFD.viewMode === 'deadzone') val = 1 - radialDeadFrac[ir]; // 0=ölü(kırmızı), 1=aktif(mavi)
-      else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
+      else val = Math.min(1, radialAvgV[ir] / vtip_ref);
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
       const f = (ir + 1) / CFD.NR;
       ctx.fillRect(cx - f * maxHalfW, cy - f * maxHalfH, f * maxHalfW * 2, f * maxHalfH * 2);
@@ -597,7 +606,7 @@ function cfdDrawTopView(canvas, p) {
     }
 
     ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
-    ctx.fillText((CFD.viewMode === 'deadzone' ? 'ÜSTTEN BAKIŞ (yük.ort.)' : 'ÜSTTEN BAKIŞ (z=pervane)') + '  W\xD7L=' + wVal.toFixed(1) + '\xD7' + lVal.toFixed(1) + 'm', cx, H - 4);
+    ctx.fillText('ÜSTTEN BAKIŞ (yük.ort.)  W\xD7L=' + wVal.toFixed(1) + '\xD7' + lVal.toFixed(1) + 'm', cx, H - 4);
 
   } else {
     const maxR = Math.min(W, H) / 2 - 20;
@@ -607,13 +616,12 @@ function cfdDrawTopView(canvas, p) {
     for (let ir = 0; ir < CFD.NR; ir++) {
       const r1 = (ir / CFD.NR) * maxR;
       const r2 = ((ir + 1) / CFD.NR) * maxR;
-      const idx = cfdIdx(ir, iz_imp);
 
       let val;
-      if (CFD.viewMode === 'concentration') val = CFD.C[idx] / cmax;
-      else if (CFD.viewMode === 'viscosity') val = Math.min(1, CFD.shearRate[idx] / gamma_ref);
+      if (CFD.viewMode === 'concentration') val = radialAvgC[ir] / cmax;
+      else if (CFD.viewMode === 'viscosity') val = Math.min(1, radialAvgG[ir] / gamma_ref);
       else if (CFD.viewMode === 'deadzone') val = 1 - radialDeadFrac[ir]; // 0=ölü(kırmızı)
-      else val = Math.min(1, CFD.vmag[idx] / vtip_ref);
+      else val = Math.min(1, radialAvgV[ir] / vtip_ref);
 
       ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
 
@@ -681,7 +689,7 @@ function cfdDrawTopView(canvas, p) {
     }
 
     ctx.fillStyle = '#94a3b8'; ctx.font = '9px JetBrains Mono'; ctx.textAlign = 'center';
-    ctx.fillText(CFD.viewMode === 'deadzone' ? 'ÜSTTEN BAKIŞ (yükseklik ort.)' : 'ÜSTTEN BAKIŞ (z = pervane)', cx, H - 4);
+    ctx.fillText('ÜSTTEN BAKIŞ (yükseklik ort.)', cx, H - 4);
   }
 }
 
