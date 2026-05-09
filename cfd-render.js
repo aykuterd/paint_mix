@@ -67,21 +67,10 @@ function cfdDrawSideView(canvas, p) {
   const liqTopY = pad.top + (dH - dHliq); // sıvı yüzeyi y-koord (üstten)
 
   const cx = pad.left + halfW;         // merkez x (eksen)
-
-  // Bombe geometrisi — erken hesaplanır, fill hücrelerden ÖNCE çizilir
   const botY    = pad.top + dH;
   const bombePx = Math.min(Math.round(dH * (p.h_bombe || 0) / (p.Htank || 1)), pad.bottom - 6);
-  if (bombePx > 0 && p.Vliq > 0) {
-    const bombeAlpha = Math.min(0.15, 0.06 + (p.Vliq / (p.V_bombe || 0.001)) * 0.08);
-    ctx.fillStyle = `rgba(56,189,248,${bombeAlpha})`;
-    ctx.beginPath();
-    ctx.moveTo(pad.left, botY);
-    ctx.bezierCurveTo(pad.left, botY+bombePx*0.55, cx-dW*0.08, botY+bombePx, cx, botY+bombePx);
-    ctx.bezierCurveTo(cx+dW*0.08, botY+bombePx, pad.left+dW, botY+bombePx*0.55, pad.left+dW, botY);
-    ctx.closePath();
-    ctx.fill();
-  }
 
+  // cmax/vtip_ref bombe render için de lazım — erken hesapla
   let vmax = 0, cmax = 0;
   for (let i = 0; i < CFD.NR * CFD.NZ; i++) {
     if (CFD.vmag[i] > vmax) vmax = CFD.vmag[i];
@@ -90,10 +79,56 @@ function cfdDrawSideView(canvas, p) {
   vmax = Math.max(vmax, 1e-10);
   cmax = Math.max(cmax, 1e-6);
 
-  // Sabit referans: 300 rpm'deki vtip — RPM arttıkça renk doygunluğu artar
-  // Grenville & Nienow (2004): bulk velocity ~ 0.1–0.3 × vtip, impeller zone ~ 0.5–1.0 × vtip
-  const vtip_ref = Math.PI * p.D * 5; // 300 rpm @ impeller D
-  const gamma_ref = vtip_ref / (p.D * 0.5); // ≈ 31.4 s⁻¹ @ 300 rpm
+  // Sabit referans: 300 rpm'deki vtip
+  const vtip_ref = Math.PI * p.D * 5;
+  const gamma_ref = vtip_ref / (p.D * 0.5);
+
+  // ── Bombe: konsantrasyon/hız renkleriyle doldur (iz=0 hücreleri yansıt) ──
+  if (bombePx > 0) {
+    // Bezier clip path — bombe şeklinin dışını kes
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pad.left, botY);
+    ctx.bezierCurveTo(pad.left, botY+bombePx*0.55, cx-dW*0.08, botY+bombePx, cx, botY+bombePx);
+    ctx.bezierCurveTo(cx+dW*0.08, botY+bombePx, pad.left+dW, botY+bombePx*0.55, pad.left+dW, botY);
+    ctx.closePath();
+    ctx.clip();
+
+    // Her r-şeridini alt CFD hücreleri (iz=0,1 ort.) renginde doldur
+    const cw = Math.ceil(cellW) + 1;
+    const deadMask = CFD.viewMode === 'deadzone' ? cfdDeadZoneMask(p) : null;
+    for (let ir = 0; ir < CFD.NR; ir++) {
+      const i0 = cfdIdx(ir, 0), i1 = cfdIdx(ir, 1);
+      let val;
+      if (CFD.viewMode === 'concentration')    val = ((CFD.C[i0] + CFD.C[i1]) * 0.5) / cmax;
+      else if (CFD.viewMode === 'velocity')    val = Math.min(1, (CFD.vmag[i0] + CFD.vmag[i1]) * 0.5 / vtip_ref);
+      else if (CFD.viewMode === 'viscosity')   val = Math.min(1, (CFD.shearRate[i0] + CFD.shearRate[i1]) * 0.5 / gamma_ref);
+      else                                     val = Math.min(1, (CFD.vmag[i0] + CFD.vmag[i1]) * 0.5 / vtip_ref);
+
+      ctx.fillStyle = cfdValToColor(val, CFD.viewMode, CFD.colorMap);
+      ctx.fillRect((cx + ir * cellW) | 0,       botY, cw, bombePx + 4);
+      ctx.fillRect((cx - (ir+1) * cellW) | 0,   botY, cw, bombePx + 4);
+
+      // Deadzone overlay
+      if (deadMask && deadMask[i0]) {
+        ctx.fillStyle = 'rgba(239,68,68,0.70)';
+        ctx.fillRect((cx + ir * cellW) | 0,     botY, cw, bombePx + 4);
+        ctx.fillRect((cx - (ir+1) * cellW) | 0, botY, cw, bombePx + 4);
+      }
+    }
+    ctx.restore();
+
+    // Bombe kontur çizgisi
+    ctx.save();
+    ctx.strokeStyle = 'rgba(100,116,139,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, botY);
+    ctx.bezierCurveTo(pad.left, botY+bombePx*0.55, cx-dW*0.08, botY+bombePx, cx, botY+bombePx);
+    ctx.bezierCurveTo(cx+dW*0.08, botY+bombePx, pad.left+dW, botY+bombePx*0.55, pad.left+dW, botY);
+    ctx.restore();
+  }
 
   // ── Hücreleri çiz: silindirik bölgeye kırp ──────────────────
   ctx.save();
